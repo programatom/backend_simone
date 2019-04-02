@@ -1,0 +1,47 @@
+<?php
+
+namespace App;
+
+use Illuminate\Database\Eloquent\Model;
+
+use App\User;
+
+class Particular extends Model
+{
+
+    protected $fillable = [
+      "user_id",
+      'nombre',
+      "telefono",
+      "calle",
+      "numero",
+      "piso",
+      "depto",
+      "localidad",
+      "provincia",
+      "observaciones",
+    ];
+
+    protected $attributes = [
+      "user_id" => 0,
+      'nombre' => "",
+      "telefono" => 0,
+      "calle" => "",
+      "numero" => 0,
+      "piso" => 0,
+      "depto" => "",
+      "localidad" => "",
+      "provincia" => "",
+      "observaciones" => "",
+    ];
+
+  public function user()
+      {
+         return $this->belongsTo(User::class);
+      }
+
+      public function pedido()
+    {
+       return $this->hasMany(Pedido::class, "user_id", "user_id");
+    }
+}
