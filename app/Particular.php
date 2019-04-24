@@ -11,7 +11,6 @@ class Particular extends Model
 
     protected $fillable = [
       "user_id",
-      'nombre',
       "telefono",
       "calle",
       "numero",
@@ -24,7 +23,6 @@ class Particular extends Model
 
     protected $attributes = [
       "user_id" => 0,
-      'nombre' => "",
       "telefono" => 0,
       "calle" => "",
       "numero" => 0,

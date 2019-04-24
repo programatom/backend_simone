@@ -16,7 +16,6 @@ class CreateParticularsTable extends Migration
         Schema::create('particulars', function (Blueprint $table) {
           $table->increments('id');
           $table->integer("user_id");
-          $table->string('nombre');
           $table->string("telefono");
           $table->string("calle");
           $table->string("numero");

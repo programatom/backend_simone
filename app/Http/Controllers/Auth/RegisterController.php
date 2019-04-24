@@ -88,17 +88,13 @@ class RegisterController extends Controller
         $role = $data["role"];
 
         if($role == "empresa"){
-          $empresa = new Empresa;
+          $empresa = Empresa::create();
           $empresa->user_id = $user->id;
           $empresa->save();
         }else if($role == "particular"){
-          $particular = new Particular;
+          $particular = Particular::create();
           $particular->user_id = $user->id;
           $particular->save();
-        }else if ($role == "empleado"){
-          $empleado = new Empleado;
-          $empleado->user_id = $user->id;
-          $empleado->save();
         }
 
       return $user;

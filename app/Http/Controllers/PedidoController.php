@@ -28,7 +28,7 @@ class PedidoController extends Controller
     {
       $user = Auth::user();
 
-      if($user->role != "admin"){
+      if($user->role != "admin" && $user->role != "empleado"){
         return response()->json([
           'status' => 'fail',
           'details' => 'Sin autorización'
@@ -53,29 +53,23 @@ class PedidoController extends Controller
       }
     }
 
-    public function get_where(Request $request)
+    public function get_where_empleado()
     {
       $user = Auth::user();
 
-      if($user->role != "admin"){
-        return response()->json([
-          'status' => 'fail',
-          'details' => 'Sin autorización'
-      ], 403);
-      }else{
+      $pedidos = Pedido::where([
+        "repartidor_habitual" => $user->name
+        ])->get();
 
-        $pedidos = Pedido::where($request->all())->get();
+      foreach ($pedidos as $pedido){
+        $usuario = $pedido->user()->get();
+        $pedido->usuario = $usuario;
+      };
 
-        foreach ($pedidos as $pedido){
-          $usuario = $pedido->user()->get();
-          $pedido->usuario = $usuario;
-        };
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $pedidos
-        ], 200);
-      }
+      return response()->json([
+        'status' => 'success',
+        'data' => $pedidos
+      ], 200);
     }
 
     /**
@@ -235,9 +229,8 @@ class PedidoController extends Controller
 
     public function showAdmin($id)
     {
-
       $user = Auth::user();
-      if($user->role != "admin"){
+      if($user->role != "admin" && $user->role != "empleado"){
         return response()->json([
           'status' => 'fail',
           'mensaje' => 'Sin autorización'
@@ -246,34 +239,38 @@ class PedidoController extends Controller
 
 
 
-      $pedidos = Pedido::where('id', $id)->get();
+      $pedido = Pedido::where('id', $id)->get()[0];
 
+      $entregas = $pedido->entregas()->get();
+      $usuario = $pedido->user()->get();
+      $productos = $pedido->productos()->get();
+      foreach($productos as $producto){
 
+        $pedido_id = $producto->pivot->pedido_id;
+        $producto_id = $producto->pivot->producto_id;
 
-      foreach($pedidos as $pedido){
+        $pivotCompleto = ProductosSolicitado::where("pedido_id" , $pedido_id)
+        ->where("producto_id", $producto_id)->get();
 
-        $entregas = $pedido->entregas()->get();
-        $usuario = $pedido->user()->get();
-        $productos = $pedido->productos()->get();
-        foreach($productos as $producto){
-
-          $pedido_id = $producto->pivot->pedido_id;
-          $producto_id = $producto->pivot->producto_id;
-
-          $pivotCompleto = ProductosSolicitado::where("pedido_id" , $pedido_id)
-                           ->where("producto_id", $producto_id)->get();
-
-          $cantidad = $pivotCompleto[0]->cantidad;
-          $producto->pivot->cantidad = $cantidad;
-        }
-        $pedido->entregas = $entregas;
-        $pedido->productos = $productos;
-        $pedido->usuario = $usuario;
+        $cantidad = $pivotCompleto[0]->cantidad;
+        $producto->cantidad = $cantidad;
+        $producto->pivot->cantidad = $cantidad;
       }
+      $pedido->entregas = $entregas;
+      $pedido->productos = $productos;
+      $pedido->usuario = $usuario;
+      $rol;
+      if($usuario[0]->role == "particular"){
+        $rol = Particular::where("user_id" , $user->id)->get()->first();
+      }else{
+        $rol = Empresa::where("user_id" , $user->id)->get()->first();
+      }
+
+      $pedido->rol = $rol;
 
       return response()->json([
         'status' => 'success',
-        'data' => $pedidos
+        'data' => $pedido
       ], 200);
     }
 

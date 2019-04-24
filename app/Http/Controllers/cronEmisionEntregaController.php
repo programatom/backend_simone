@@ -12,9 +12,32 @@ use DateInterval;
 class cronEmisionEntregaController extends Controller
 {
 
-    // Debería analizar como voy a  manejar los cambios del usuario sobre esta lógica. Si el tipo cancela un pedido un dia y en el mismo dia lo vuelve a levantar, se emiten dos entregas para el mismo dia.
 
-    // 1 - No puede haber dos entregas el mismo dia del mismo pedido.
+
+    public function emitir_entrega($pedido, $usuario_del_pedido, $nueva_fecha_potencial){
+      // Debería analizar como voy a  manejar los cambios del usuario sobre esta lógica. Si el tipo cancela un pedido un dia y en el mismo dia lo vuelve a levantar, se emiten dos entregas para el mismo dia.
+
+      // 1 - No puede haber dos entregas el mismo dia del mismo pedido.
+      $ultima_entrega = $pedido->entregas()->get()->last();
+      if($ultima_entrega != null){
+        // Si hay una entrega, se checkea la nueva entrega potencial con la anterior
+        $fecha_de_entrega_potencial_anterior = $ultima_entrega->fecha_de_entrega_potencial;
+        $fecha_de_entrega_potencial_anterior_obj = new \DateTime($fecha_de_entrega_potencial_anterior);
+
+        $fecha = $fecha_de_entrega_potencial_anterior_obj->format("Y/m/d");
+
+        if($fecha_de_entrega_potencial_anterior == $nueva_fecha_potencial){
+          return $this->en_proceso_state($pedido);
+        }
+      }
+
+      $entrega_nueva = Entrega::create([
+        "user_id" => $usuario_del_pedido->id,
+        "pedido_id" => $pedido->id,
+        "fecha_de_entrega_potencial" => $nueva_fecha_potencial
+      ]);
+      return $this->en_proceso_state($pedido);
+    }
 
     public function reestablecer_estado_en_proceso(Request $request){
 
@@ -51,9 +74,8 @@ class cronEmisionEntregaController extends Controller
     public function emission_logic($pedido){
 
       $hoy =date("Y/m/d");
-      //$hoy = "2019/05/01";
+      //$hoy = "2019/04/10";
 
-      // CHECKEADO EL TEMA DE LAS FECHAS. SE EMITEN AL DIA QUE DEBEN. CHECKEADO EL SISTEMA DE ALARMA. FALTA REVISAR LOGICA DE PEDIDOS DIARIOS.
 
       if($this->pedido_with_no_data($pedido)){
         return "no data";
@@ -65,7 +87,9 @@ class cronEmisionEntregaController extends Controller
 
 
       $ultima_entrega = $pedido->entregas()->get()->last();
+
       // Nunca se emitió una entrega? Si o si se emite una si el pedido está en proceso
+
       $usuario_del_pedido = $pedido->user()->get()->first();
       $periodicidad_pedido = $pedido->periodicidad;
       $dias_de_entrega = $pedido->dia_de_entrega;
@@ -76,12 +100,14 @@ class cronEmisionEntregaController extends Controller
 
         // SI NUNCA SE EMITIO UNA ENTREGA (INICIAL PEDIDO) O ESTABA CANCELADO SE EMITE UNA ENTREGA ASAP
 
-        if($ultima_entrega == null || $pedido->danger < 0 ){
+        if($ultima_entrega == null ||
+           $pedido->danger < 0){
 
           $this->emitir_entrega_partiendo_de_hoy($periodicidad_pedido, $hoy,
         $dias_de_entrega, $pedido, $usuario_del_pedido);
 
-          return "se reestablece un cancelado o inicial";
+          return "se reestablece un cancelado, emite un inicial o un pedido adelantado";
+
         }
         $fecha_de_procesamiento_real = $ultima_entrega->fecha_de_procesamiento_real;
         $last_potential_date = $ultima_entrega->fecha_de_entrega_potencial;
@@ -90,10 +116,68 @@ class cronEmisionEntregaController extends Controller
         // Se entrego?
 
 
-        if($fecha_de_procesamiento_real != ""){
-
+        if($ultima_entrega->estado == "entregada"){
           // Se realizó la entrega emitida. Se emite la siguiente que va a ser en el dia igual al dia de entrega que esté despues de la suma entre la fecha de creacion y los dias a añadir por periodicidad en el caso de que no haya dias de alarma. Antes checkeo si se entregó dentro del rango previsto o si estuvo algunos días sin procesarse el pedido
 
+          // En este paso debería checkear el filtro counter y ver si se adelanto o no entregas. Si adelanto, el usuario va a especificar cuantas entregas quiere que se adelanten. Como el estado es entregado, la logica viene a este punto todos las iteraciones a intentar de emitir la próxima entrega. Opciones:
+
+          // 1 - Multiplicar el Nº de entregas a filtrar por la periodicidad y descontar de ese valor hasta que de cero. Pero si se entrega en un dia distinto al potencial
+          // POSIBLE ECUACIÓN: Nº EntregasAFiltrar * Periodicidad - TiempoPasadoDesdeLaUltimaFechaPotencial
+
+          if($ultima_entrega->adelanta == 1){
+
+            if($ultima_entrega->filtro_counter == -1){
+              $entregas_a_adelantar = $ultima_entrega->entregas_adelantadas;
+              $valor_periodicidad = 0;
+              switch ($periodicidad_pedido) {
+                case 'semanal':
+                  $valor_periodicidad = 7;
+                  break;
+
+                case 'mensual':
+                  $valor_periodicidad = 28;
+                  break;
+
+                case 'quincenal':
+                  $valor_periodicidad = 14;
+                  break;
+
+                case 'diario':
+                  // PENDIENTE DEFINICIÓN
+                  break;
+              }
+              $hoyTIME = strtotime($hoy);
+              $last_potential_dateTIME = strtotime($last_potential_date);
+
+              //TIENE QUE CAER A LA EMISION DEVUELTA SI O SI EN UN DIA DEL PERIODO ENTRE LA FECHA DESEADA Y LA FECHA POSIBLE ANTERIOR.
+
+              $diferencia_entre_hoy_y_potencial = $hoyTIME - $last_potential_dateTIME;
+
+              if($diferencia_entre_hoy_y_potencial < 0){
+                $diferencia_entre_hoy_y_potencial = 0;
+              }
+
+              $filtro_counter = ($entregas_a_adelantar + 1) * $valor_periodicidad - ($diferencia_entre_hoy_y_potencial) - 2;
+              $ultima_entrega->observaciones = $diferencia_entre_hoy_y_potencial;
+              $ultima_entrega->filtro_counter = $filtro_counter;
+              $ultima_entrega->save();
+              $this->en_proceso_state($pedido);
+              return "adelantada";
+            }
+
+
+
+
+
+            if($ultima_entrega->filtro_counter == 0){
+            return $this->emitir_entrega_partiendo_de_hoy($periodicidad_pedido, $hoy, $dias_de_entrega, $pedido, $usuario_del_pedido);
+            }else{
+
+              $ultima_entrega->filtro_counter = $ultima_entrega->filtro_counter - 1;
+              $ultima_entrega->save();
+              return $this->en_proceso_state($pedido);
+            }
+          }
 
           if($pedido->danger == 0){
 
@@ -115,7 +199,7 @@ class cronEmisionEntregaController extends Controller
         // Antes de hacer nada tengo que checkear que hoy sea mas grande que la fecha potencial de la entrega si es hoy es mas grande entonces no se entrego cuando se debería, pero podemos estar en el mismo periodo
 
         $dateTimestamp1 = strtotime($hoy);
-        $dateTimestamp2 = strtotime($ultima_entrega->fecha_de_entrega_potencial);
+        $dateTimestamp2 = strtotime($last_potential_date);
 
         if( $dateTimestamp1 >  $dateTimestamp2){
 
@@ -135,7 +219,7 @@ class cronEmisionEntregaController extends Controller
 
           if($nueva_fecha_potencial > $hoy){
 
-            // Estamos en el mismo dia o mas de cuando se debería entregar, per en el mismo periodo franco
+            // Estamos en el mismo dia o mas de cuando se debería entregar, pero en el mismo periodo franco
 
             return $this->alarm_state($pedido);
           }else{
@@ -146,7 +230,7 @@ class cronEmisionEntregaController extends Controller
         }else{
           return $this->en_proceso_state($pedido);
         }
-      }else if($pedido->estado == "cancelado"){
+      }else if($pedido->estado == "discontinuado"){
         return $this->cancelado_state($pedido);
       }
 
@@ -161,30 +245,7 @@ class cronEmisionEntregaController extends Controller
 
       }
 
-      public function emitir_entrega($pedido, $usuario_del_pedido, $nueva_fecha_potencial){
-        // 1 - No puede haber dos entregas del mismo pedido en el mismo dia
-        $ultima_entrega = $pedido->entregas()->get()->last();
-        if($ultima_entrega != null){
-          // Si hay una entrega, se checkea la nueva entrega potencial con la anterior
-          $fecha_de_entrega_potencial_anterior = $ultima_entrega->fecha_de_entrega_potencial;
-          $fecha_de_entrega_potencial_anterior_obj = new \DateTime($fecha_de_entrega_potencial_anterior);
 
-          $fecha = $fecha_de_entrega_potencial_anterior_obj->format("Y/m/d");
-
-          if($fecha_de_entrega_potencial_anterior == $nueva_fecha_potencial){
-            return $this->en_proceso_state($pedido);
-          }
-        }
-
-
-
-        $entrega_nueva = Entrega::create([
-          "user_id" => $usuario_del_pedido->id,
-          "pedido_id" => $pedido->id,
-          "fecha_de_entrega_potencial" => $nueva_fecha_potencial
-        ]);
-        return $this->en_proceso_state($pedido);
-      }
 
       public function emitir_entrega_pedido_a_tiempo($periodicidad_pedido, $last_potential_date, $pedido, $usuario_del_pedido){
 
@@ -218,7 +279,7 @@ class cronEmisionEntregaController extends Controller
         $pedido->alarma = 0;
         $pedido->danger = 0;
         $pedido->save();
-        return "proceso state achieved";
+        return "proceso state";
       }
 
       public function cancelado_state($pedido){
@@ -240,7 +301,7 @@ class cronEmisionEntregaController extends Controller
         $pedido->alarma = 0;
         $pedido->danger = 1;
         $pedido->save();
-        return "DANGER";
+        return "DANGER state";
       }
 
       public function emitir_entrega_partiendo_de_hoy($periodicidad_pedido, $hoy,

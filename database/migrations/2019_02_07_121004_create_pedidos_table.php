@@ -23,15 +23,13 @@ class CreatePedidosTable extends Migration
           $table->string("estado");
           $table->string("dia_de_entrega");
           $table->string("forma_de_pago");
-          $table->integer("alarma");
-          $table->integer("monto_sin_desc");
-          $table->integer("monto_con_desc");
+          $table->integer("expiracion_descuento");
+          $table->integer("veces_por_semana");
           $table->integer("dias_sin_procesar_danger");
+          $table->integer("faltan_datos");
+          $table->integer("alarma");
           $table->integer("danger");
           $table->integer("visto");
-          $table->integer("estado_emision");
-          $table->integer("faltan_datos");
-          $table->integer("veces_por_semana");
           $table->timestamps();
         });
     }

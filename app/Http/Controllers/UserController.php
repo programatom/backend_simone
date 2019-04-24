@@ -119,6 +119,7 @@ class UserController extends Controller
           'email'=> 'Debe ingresar un email válido',
           'confirmed'=> 'Ambas contraseñas deben coincidir!',
           'min'=> 'La contraseña debe tener al menos 6 caracteres',
+          'integer' => "Debe ingresar un campo numérico en :attribute"
 
         ];
 
@@ -146,6 +147,7 @@ class UserController extends Controller
           'name' => [ 'string', 'max:255'],
           'email' => [ 'string', 'email', 'max:255', 'unique:users'],
           'password' => [ 'string', 'min:6', 'confirmed'],
+          "saldo" => ["integer"]
         ],$messages);
 
 
@@ -159,7 +161,8 @@ class UserController extends Controller
         $user->update([
           'name' => $request['name'],
           'email' => $request['email'],
-          'password' => Hash::make($request['password'])
+          'password' => Hash::make($request['password']),
+          "saldo" => $request["saldo"]
         ]);
 
         return response()->json([

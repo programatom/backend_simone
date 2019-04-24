@@ -6,7 +6,12 @@ use Illuminate\Http\Request;
 use App\Entrega;
 use App\Pedido;
 use App\User;
-use App\ExceptionProduct;
+use App\ProductoEntrega;
+use App\SaldoCliente;
+
+use App\Particular;
+use App\Empresa;
+use App\ProductosSolicitado;
 
 
 use Illuminate\Support\Facades\Auth;
@@ -45,40 +50,194 @@ class EntregaController extends Controller
       }
     }
 
-    public function get_entregas_habituales_empleado(Request $request){
-       $repartidor_habitual = $request->repartidorHabitual;
-       $fecha_actual = $request->fechaActual;
-       $fecha =
+    public function get_entregas_danger(){
+      $user = Auth::user();
+
+      $repartidor_habitual = $user->name;
+
+      $pedidos_habituales = Pedido::where([
+        "repartidor_habitual" => $repartidor_habitual,
+        "estado" => "en proceso",
+        "danger" => 1,
+        ])->get();
+
+      $pedidos_excepcionales = Pedido::where([
+        "repartidor_excepcional" => $repartidor_habitual,
+        "estado" => "en proceso",
+        "danger" => 1
+        ])->get();
+      $habituales_excepcionales = array_merge($pedidos_habituales->all(),$pedidos_excepcionales->all());
+      $array_entregas = $this->entrega_object($habituales_excepcionales, "todas");
+
+      return response()->json([
+        "status"=>"success",
+        "data"=> $array_entregas,
+        "nombre_empleado" =>$user->name
+      ]);
+    }
+
+    public function get_from_date_to(Request $request){
+
+      $fecha_inicial = $request->desde;
+      $fecha_final = $request->hasta;
+
+
+      $entregas = Entrega::whereBetween('fecha_de_entrega_potencial', [$fecha_inicial, $fecha_final])->get();
+
+      $ids_pedidos = [];
+
+      foreach ($entregas as $entrega) {
+        array_push($ids_pedidos, $entrega->pedido_id);
+      }
+
+      $user = Auth::user();
+
+      $repartidor_habitual = $user->name;
+
+      $pedidos_habituales = Pedido::where([
+        "repartidor_habitual" => $repartidor_habitual,
+        "estado" => "en proceso",
+        ]);
+
+      $pedidos_excepcionales = Pedido::where([
+        "repartidor_excepcional" => $repartidor_habitual,
+        "estado" => "en proceso",
+        ]);
+
+      $pedidos_habituales = $pedidos_habituales->whereIn(
+        "id", $ids_pedidos)->get();
+
+      $pedidos_excepcionales = $pedidos_excepcionales->whereIn(
+          "id", $ids_pedidos)->get();
+
+      $habituales_excepcionales = array_merge($pedidos_habituales->all(), $pedidos_excepcionales->all());
+
+      $array_entregas_date_filter = $this->entrega_object($habituales_excepcionales, "todas");
+
+      return response()->json([
+        "status"=>"success",
+        "data"=> $array_entregas_date_filter
+      ]);
+    }
+
+    public function get_entregas_con_alarma_y_excepcionales(){
+      $user = Auth::user();
+
+      $repartidor_habitual = $user->name;
+
+      $pedidos_habituales = Pedido::where([
+        "repartidor_habitual" => $repartidor_habitual,
+        "estado" => "en proceso",
+        "alarma" => 1,
+        ])->get();
+
+      $pedidos_excepcionales = Pedido::where([
+        "repartidor_excepcional" => $repartidor_habitual,
+        "estado" => "en proceso",
+        ])->get();
+      $habituales_excepcionales = array_merge($pedidos_habituales->all(),$pedidos_excepcionales->all());
+      $array_entregas = $this->entrega_object($habituales_excepcionales, "todas");
+
+      return response()->json([
+        "status"=>"success",
+        "data"=> $array_entregas,
+        "nombre_empleado" =>$user->name
+      ]);
+
+    }
+
+    public function get_entregas_habituales_empleado_hoy(){
+
+       $user = Auth::user();
+
+       $repartidor_habitual = $user->name;
+
        $pedidos_habituales = Pedido::where([
          "repartidor_habitual" => $repartidor_habitual,
          "estado" => "en proceso"
          ])->get();
 
-       $array_pedidos_habituales_hoy = array();
-       foreach ($pedidos_habituales as $pedido_habitual) {
-
-         $obj_habitual_pedido_hoy = new \StdClass();
-         $entregas_habituales_hoy = array();
-
-         $entregas_pedido = $pedido_habitual->entregas();
-         foreach ($entregas_pedido as $entrega) {
-           if($entrega->fecha_de_entrega == $fecha_actual){
-             $entregas_habituales_hoy[] = $entrega;
-           }
-         }
-         $user = $pedido_habitual->user()->get();
-         $productos = $pedido_habitual->productos()->get();
-         $obj_habitual_pedido_hoy->entregas = $entregas_habituales_hoy;
-         $obj_habitual_pedido_hoy->pedido = $pedido_habitual;
-         $obj_habitual_pedido_hoy->usuario = $user;
-         $obj_habitual_pedido_hoy->productos = $productos;
-         $array_pedidos_habituales_hoy[] = $obj_habitual_pedido_hoy;
-       }
+       $array_pedidos_habituales_hoy = $this->entrega_object($pedidos_habituales, "hoy");
 
        return response()->json([
          "status"=> "success",
          "data"=>$array_pedidos_habituales_hoy
        ],200);
+    }
+
+
+    public function entrega_object($pedidos_habituales, $filtro_entregas_dia){
+      $array_pedidos_habituales_hoy = array();
+      $fecha_hoy = date("Y/m/d");
+
+      foreach ($pedidos_habituales as $pedido_habitual) {
+
+        $obj_habitual_pedido_hoy = new \StdClass();
+
+
+        $user = $pedido_habitual->user()->get()->first();
+        $rol;
+        if($user->role == "particular"){
+          $rol = Particular::where("user_id" , $user->id)->get()->first();
+        }else{
+          $rol = Empresa::where("user_id" , $user->id)->get()->first();
+        }
+        $obj_habitual_pedido_hoy->rol = $rol;
+        $obj_habitual_pedido_hoy->pedido = $pedido_habitual;
+        $obj_habitual_pedido_hoy->usuario = $user;
+
+        $entrega_is_procesada = false;
+        $productos_entregados = [];
+        if($filtro_entregas_dia == "hoy"){
+          $entregas_habituales_hoy = array();
+          $entregas_pedido = $pedido_habitual->entregas()->get();
+          foreach ($entregas_pedido as $entrega) {
+            if($entrega->fecha_de_entrega_potencial == $fecha_hoy){
+              $entregas_habituales_hoy[] = $entrega;
+            }
+          }
+          if(count($entregas_habituales_hoy) > 0){
+            $obj_habitual_pedido_hoy->entrega = $entregas_habituales_hoy[0];
+          }else{
+            $obj_habitual_pedido_hoy->entrega = null;
+          }
+
+        }else{
+          $entregas_pedido = $pedido_habitual->entregas()->get();
+          if(count($entregas_pedido) > 0){
+            $obj_habitual_pedido_hoy->entrega = $entregas_pedido[0];
+            if($entregas_pedido[0]->estado != "sin procesar"){
+              $entrega_is_procesada = true;
+              $productos_entregados = $entregas_pedido[0]->productos_entregados()->get();
+            }
+          }else{
+            $obj_habitual_pedido_hoy->entrega = null;
+          }
+        }
+        $productos = [];
+
+        if($entrega_is_procesada){
+          $productos = $productos_entregados;
+        }else{
+          $productos = $pedido_habitual->productos()->get();
+          foreach($productos as $producto){
+
+            $pedido_id = $producto->pivot->pedido_id;
+            $producto_id = $producto->pivot->producto_id;
+
+            $pivotCompleto = ProductosSolicitado::where("pedido_id" , $pedido_id)
+            ->where("producto_id", $producto_id)->get();
+
+            $cantidad = $pivotCompleto[0]->cantidad;
+            $producto->cantidad = $cantidad;
+          }
+        }
+
+        $obj_habitual_pedido_hoy->productos = $productos;
+        $array_pedidos_habituales_hoy[] = $obj_habitual_pedido_hoy;
+
+      }
+      return $array_pedidos_habituales_hoy;
     }
 
     /**
@@ -200,16 +359,70 @@ class EntregaController extends Controller
 
     }
 
+    public function reintentar_entrega($entrega_id){
+      $entrega = Entrega::where("id", $entrega_id)->update([
+        "reintentar" => 1
+      ]);
+      return response()->json([
+        'status' => 'success',
+        'data' => $entrega
+      ], 200);
+    }
+
+    public function derivar_entrega($entrega_id,$data_request,$pedido_entrega){
+      $entrega = $this->procesar_entrega_database_save($entrega_id, $data_request, 0, $pedido_entrega);
+
+      return response()->json([
+        'status' => 'success',
+        'data' => $entrega
+      ], 200);
+    }
+
+    public function crear_entrega($request){
+
+      // pedido id
+      // producto
+      $paga_con = $request->paga_con;
+      $entrega = Entrega::create([
+        "user_id" => $request->user_id,
+        "pedido_id" => $request->pedido_id,
+        "fecha_de_entrega_potencial" => date("Y/m/d"),
+        "fecha_de_procesamiento_real" => date("Y/m/d"),
+        "estado" => "entregada",
+        "observaciones" => $request->observaciones,
+        "paga_con" => $paga_con,
+        "out_of_schedule" => 1
+      ]);
+
+      $entrega_id = $entrega->id;
+      $productos_entregados = $request->productos_entregados;
+      $monto_a_pagar = $request->monto_a_pagar;
+      $user = User::where("id", $user_id)->get()->first();
+
+      $this->guardar_entrega_de_producto($entrega_id, $productos_entregados);
+      $this->actualizar_saldo_cliente($entrega_id, "entregada", $monto_a_pagar, $paga_con, $user);
+
+      return response()->json([
+        "status" => "success",
+        "data" => $entrega
+      ]);
+
+    }
+
 
 
 
     public function procesar_entrega(Request $request){
 
       $entrega_id = $request->entrega_id;
+      if($entrega_id == -1){
+        return $this->crear_entrega($request);
+      }
       $data_request = (object) $request->data;
 
-      $estado_entrega = $data_request->estado;
       $is_derivada = $data_request->derivada;
+      $reintentar = $data_request->reintentar;
+
 
       $pedido_entrega = Entrega::where("id" , $entrega_id)
                                  ->get()
@@ -218,110 +431,134 @@ class EntregaController extends Controller
 
       $pedido_id = $pedido_entrega->id;
 
-      $monto_pedido_con_descuento = $pedido_entrega->monto_con_desc;
+      if($reintentar == 1){
+        return $this->reintentar_entrega($entrega_id);
+      }
 
       // HACER VALIDACION, NO SE PUEDEN DERIVAR ENTREGAS PROCESADAS !
       // NO SE PUEDEN MODIFICAR ENTREGAS DERIVADAS !
       if($is_derivada == 1){
-
-        $entrega = $this->procesar_entrega_database($entrega_id, $data_request, 0 , 0, $pedido_entrega);
-
-        return response()->json([
-          'status' => 'success',
-          'data' => $entrega
-        ], 200);
+        return $this->derivar_entrega($entrega_id,$data_request,$pedido_entrega);
 
       }
+
+      $estado_entrega = $data_request->estado;
+
+
       if($estado_entrega == "cancelada"){
+        $productos_entregados = $data_request->productos_entregados;
+        $this->guardar_entrega_de_producto($entrega_id, $productos_entregados);
 
-        $entrega = $this->procesar_entrega_database($entrega_id, $data_request, 0 , 0, $pedido_entrega);
-
-        return response()->json([
-          'status' => 'success',
-          'data' => $entrega
-        ], 200);
-
-      }
-
-      if($estado_entrega == "entregada"){
-
-        $entrega = $this->procesar_entrega_database($entrega_id, $data_request, $monto_pedido_con_descuento , 0, $pedido_entrega);
+        $entrega = $this->procesar_entrega_database_save($entrega_id, $data_request, 0 , $pedido_entrega);
 
         return response()->json([
           'status' => 'success',
           'data' => $entrega
         ], 200);
-
       }
 
       $paga_con = $data_request->paga_con;
+      $user = Entrega::where("id" , $entrega_id)->get()->first()->user()->get()->first();
 
-      if($estado_entrega == "entregada_con_modificaciones"){
-        $exception_productos = $data_request->exception_product;
-        if( $exception_productos == 1){
-          $productos = $data_request->productos;
+      if($estado_entrega == "entregada"){
+        $productos_entregados = $data_request->productos_entregados;
+        $this->guardar_entrega_de_producto($entrega_id, $productos_entregados);
 
-          // Primero borro todos los datos de la tabla
+        $entrega = $this->procesar_entrega_database_save($entrega_id, $data_request, $paga_con , $pedido_entrega);
 
-          $excepciones_hechas = ExceptionProduct::where("entrega_id" , $entrega_id)->get();
-
-          if(count($excepciones_hechas) > 0){
-            $excepciones_hechas->delete();
-          }
-
-          foreach($productos as $producto){
-            $producto = (object) $producto;
-            $producto_id = $producto->id;
-            $cantidad = $producto->cantidad;
-
-            ExceptionProduct::create([
-              "pedido_id" => $pedido_id,
-              "entrega_id" => $entrega_id,
-              "producto_id" => $producto_id,
-              "cantidad" => $cantidad
-            ]);
-          }
-
-          $entrega = $this->procesar_entrega_database($entrega_id, $data_request, $paga_con , 1, $pedido_entrega);
-          return response()->json([
-            'status' => 'success',
-            'data' => $entrega
-          ], 200);
-
-        }else{
-          $entrega = $this->procesar_entrega_database($entrega_id, $data_request, $paga_con , 0, $pedido_entrega);
-          return response()->json([
-            'status' => 'success',
-            'data' => $entrega
-          ], 200);
-        }
+        return response()->json([
+          'status' => 'success',
+          'data' => $entrega
+        ], 200);
       }
-
 
     }
 
-    public function procesar_entrega_database($entrega_id, $data_request, $paga_con , $exception_product, $pedido_entrega){
+    public function guardar_entrega_de_producto($entrega_id, $productos_entregados){
+      // 1 - Una entrega puede tener solo una entrada en la tabla de productos entregados. Los productos se guardan en distintas filas de la tabla, pero si se encuentra un campo con el id de la entrega, se borra todo y se agregan los nuevos campos.
 
-      if( $paga_con != $pedido_entrega->monto_con_desc){
+      // NOTA: Lo demás son datos de actualizacion sobreescribibles.
+      $productos_entregados = $productos_entregados;
+      $query_productos = ProductoEntrega::where("entrega_id" , $entrega_id);
+      $productos_registrados = $query_productos->get();
 
-        // CAMBIO SALDO AL CLIENTE
-        $diferencia_pago = $paga_con - $pedido_entrega->monto_con_desc;
-        $user = $pedido_entrega->user()->get()->first();
-        $saldo_usuario = $user->saldo;
-        $user->saldo = $saldo_usuario + $diferencia_pago; // SUMA SALDO POSITIVO
-        $user->save();
-
+      if(count($productos_registrados) > 0){
+        $query_productos->delete();
       }
+
+      foreach($productos_entregados as $producto){
+        $producto = (object) $producto;
+        $producto_id = $producto->id;
+        $cantidad = $producto->cantidad;
+        $precio = $producto->precio;
+        $nombre = $producto->nombre;
+        ProductoEntrega::create([
+          "cantidad" => $cantidad,
+          "entrega_id" => $entrega_id,
+          "producto_id" => $producto_id,
+          "precio" => $precio,
+          "nombre" => $nombre
+        ]);
+      }
+
+      return;
+
+    }
+
+    public function procesar_entrega_database_save($entrega_id, $data_request, $paga_con , $pedido_entrega){
+
+      // CHECKEAR PROCESAMIENTO DE SALDO
+
+      $estado = $data_request->estado;
+      $monto_a_pagar = $data_request->monto_a_pagar;
+      $user = $pedido_entrega->user()->get()->first();
+      $this->actualizar_saldo_cliente($entrega_id, $estado, $monto_a_pagar, $paga_con, $user);
 
       $entrega = Entrega::where("id", $entrega_id)->update([
         "estado" => $data_request->estado,
-        "fecha_de_procesamiento_real" => $data_request->fecha_de_procesamiento_real,
-        "exception_product"=> $exception_product,
+        "fecha_de_procesamiento_real" => date("Y/m/d"),
         "paga_con" => $paga_con,
-        "derivada" => $data_request->derivada
+        "derivada" => $data_request->derivada,
+        "reintentar" => $data_request->reintentar,
+        "adelanta" => $data_request->adelanta,
+        "entregas_adelantadas" => $data_request->entregas_adelantadas,
+        "observaciones" => $data_request->observaciones
       ]);
 
       return $entrega;
+    }
+
+    public function actualizar_saldo_cliente($entrega_id, $estado,$monto_a_pagar, $paga_con, $user){
+      // 1 - SIEMPRE QUE SE PROCESA UNA ENTREGA SE BORRAN TODOS LOS CAMPOS DE SALDO. SOLAMEMNTE CUANDO ESTÁ ENTREGADA PUEDE HABER CAMBIOS EN EL SALDO DE UN CLIENTE.
+
+      $estado_entrega = $estado;
+      SaldoCliente::where("entrega_id" , $entrega_id)->delete();
+
+      if($estado_entrega != "entregada"){
+        return;
+      }
+
+      $monto_a_pagar = $monto_a_pagar;
+      if($paga_con != $monto_a_pagar){
+        $saldo_cliente = $paga_con - $monto_a_pagar;
+        SaldoCliente::create([
+          "monto_asignado" => $saldo_cliente,
+          "entrega_id" => $entrega_id,
+          "user_id" => $user->id
+        ]);
+
+        $todos_los_saldos_usuario = SaldoCliente::where("user_id" , $user->id)->get();
+        $saldo_final = 0;
+        foreach($todos_los_saldos_usuario as $saldo){
+          $monto_asignado = $saldo->monto_asignado;
+          $saldo_final = $saldo_final + $monto_asignado;
+        }
+        $user->saldo = $saldo_final;
+        $user->save();
+        return;
+      }else{
+        return;
+      }
     }
 
 }

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Auth;
 
 use App\Empleado;
+use App\User;
+
 use Illuminate\Http\Request;
 
 class EmpleadoController extends Controller
@@ -24,7 +26,11 @@ class EmpleadoController extends Controller
       ], 403);
       }else{
 
-        $empleados = Empleado::all();
+        //$empleados = Empleado::all();
+
+        $empleados = User::where([
+          "role" => "empleado"
+        ])->get();
 
         return response()->json([
             'status' => 'success',

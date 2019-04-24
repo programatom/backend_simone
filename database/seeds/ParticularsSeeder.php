@@ -11,6 +11,6 @@ class ParticularsSeeder extends Seeder
      */
     public function run()
     {
-      factory(App\Particular::class, 20)->create();
+      factory(App\Particular::class, 40)->create();
     }
 }

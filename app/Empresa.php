@@ -20,7 +20,6 @@ class Empresa extends Model
   }
 
     protected $fillable = [
-      "nombre",
       "razon_social",
       "CUIT",
       "dom_fiscal",
@@ -33,12 +32,11 @@ class Empresa extends Model
       "provincia",
       "nombre_receptor",
       "observaciones",
-      "user_id"
+      "user_id",
     ];
 
     protected $attributes = array(
       "user_id" => 0,
-      "nombre" => "",
       "razon_social" => "",
       "CUIT" => 0,
       "dom_fiscal" => "",

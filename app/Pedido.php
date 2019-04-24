@@ -15,20 +15,18 @@ class Pedido extends Model
       "user_id",
       "periodicidad",
       "forma_de_pago",
-      "monto_sin_desc",
-      "monto_con_desc",
       "estado",
       "repartidor_habitual",
       "repartidor_excepcional",
       "dia_de_entrega",
       "descuento",
       "visto",
-      "estado_emision",
       "faltan_datos",
       "veces_por_semana",
       "alarma",
       "danger",
       "dias_sin_procesar_danger",
+      "expiracion_descuento"
     ];
 
     protected $attributes = [
@@ -39,12 +37,13 @@ class Pedido extends Model
       "dia_de_entrega"=> "",
       "descuento" => 0,
       "visto" => 0,
-      "estado_emision" => 0,
       "faltan_datos" => 1,
       "veces_por_semana" => 1,
       "alarma" => 0,
       "danger" => 0,
       "dias_sin_procesar_danger" => 0,
+      "expiracion_descuento" => 0
+
     ];
 
 

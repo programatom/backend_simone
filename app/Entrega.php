@@ -20,6 +20,10 @@ class Entrega extends Model
          return $this->belongsTo('App\Pedido');
      }
 
+     public function productos_entregados(){
+       return $this->hasMany('App\ProductoEntrega');
+     }
+
      protected $fillable = [
        "user_id",
        "pedido_id",
@@ -28,8 +32,14 @@ class Entrega extends Model
        "derivada",
        "estado",
        "observaciones",
-       "exception_product",
-       "paga_con"
+       "paga_con",
+       "filtro_counter",
+       "adelanta",
+       "entregas_adelantadas",
+       "reintentar",
+       "out_of_schedule"
+
+
      ];
 
      protected $attributes = [
@@ -37,9 +47,12 @@ class Entrega extends Model
        "fecha_de_procesamiento_real" => "",
        "observaciones" => "",
        "estado" => "sin procesar",
-       "exception_product" => 0,
        "paga_con" => 0,
-
+       "filtro_counter"=> -1,
+       "entregas_adelantadas"=> 0,
+       "adelanta" => 0,
+       "reintentar" => 0,
+       "out_of_schedule" => 0
      ];
 
 }

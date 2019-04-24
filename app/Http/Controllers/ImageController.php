@@ -70,6 +70,7 @@ class ImageController extends Controller
           'data' =>  "Un archivo con este nombre ya está subido"
         ], 200);
       }
+
       $upload = $file->storeAs("public/imagenes" , $file_name);
 
       $url = Storage::url($upload);

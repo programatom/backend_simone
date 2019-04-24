@@ -42,18 +42,21 @@ Route::group(['middleware' => 'auth:api'], function() {
     Route::get('pedidoShowAdmin/{id}', 'PedidoController@showAdmin');
     Route::post('pedidoStoreAdmin', 'PedidoController@storeAdmin'); // LISTO
     Route::post('pedidoUpdate', 'PedidoController@updateAdmin'); // LISTO
-    Route::post('pedidoWhere', 'PedidoController@get_where'); // LISTO
+    Route::get('pedidosEmpleado', 'PedidoController@get_where_empleado'); // LISTO
 
 
     // 4- Entregas
 
     Route::get('entregas', 'EntregaController@index'); // Entrega con user y pedido
     Route::get('entregaShow', 'EntregaController@show'); // Entrega de un user y de un pedido
-    Route::post('entregasEmpleadoHabituales', 'EntregaController@get_entregas_habituales_empleado'); // PROBADO
+    Route::get('entregasEmpleadoHabituales', 'EntregaController@get_entregas_habituales_empleado_hoy'); // PROBADO
 
     Route::post('entrega', 'EntregaController@store'); // PROBADO
     Route::post('entregaUpdate', 'EntregaController@update');
     Route::post("procesarEntrega" , 'EntregaController@procesar_entrega');
+    Route::post("buscarEntregasFecha" , 'EntregaController@get_from_date_to');
+    Route::get("entregasAlarmaYExcepcionales" , 'EntregaController@get_entregas_con_alarma_y_excepcionales');
+    Route::get("entregasDanger", "EntregaController@get_entregas_danger");
 
     // 5- Productos
     Route::get('productos', 'ProductoController@index');

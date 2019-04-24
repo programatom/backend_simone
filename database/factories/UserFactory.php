@@ -20,10 +20,10 @@ $factory->define(App\User::class, function (Faker $faker) {
         'email' => $faker->unique()->safeEmail,
         'email_verified_at' => now(),
         'password' => Hash::make("asdasd"), // secret
-        'role' => ["empresa", "particular"][rand(0,1)],
+        'role' => "particular",
         'remember_token' => Str::random(10),
         'api_token' => Str::random(10),
-        "saldo" => rand (-10000,10000),
+        "saldo" => 0,
     ];
 });
 
@@ -31,7 +31,6 @@ $factory->define(App\Empresa::class, function (Faker $faker) {
     static $number = 1;
 
     return [
-      'nombre' => $faker->name,
       'razon_social' => rand (1,10000000),
       'CUIT' => rand (1,10000000),
       'dom_fiscal' => $faker->sentence,
@@ -49,10 +48,9 @@ $factory->define(App\Empresa::class, function (Faker $faker) {
 });
 
 $factory->define(App\Particular::class, function (Faker $faker) {
-  static $number = 20;
+  static $number = 0;
     return [
       "user_id" => $number++,
-      "nombre" => $faker->name,
       "telefono" => $faker->phoneNumber,
       "calle" => $faker->sentence,
       "numero" => rand (1,20),
@@ -80,15 +78,12 @@ $factory->define(App\Pedido::class, function (Faker $faker) {
     return [
       "user_id" =>rand(1,40),
       "periodicidad" => ["semanal", "mensual" , "quincenal"][rand(0,2)],
-      "repartidor_habitual" => ["Juan Carlos", "Tomas" , "Javier", "Sergio"][rand(0,3)],
+      "repartidor_habitual" => "Tomas",
       "repartidor_excepcional" => ["Juan Carlos", "Tomas" , "Javier", "Sergio"][rand(0,3)],
       "estado" => "en proceso",
-      "dia_de_entrega" => ["1" , "2", "3", "4", "5" , "6", "7"][rand(0,4)],
+      "dia_de_entrega" => ["1" , "2", "3", "4", "5" , "6", "7"][rand(0,6)],
       "forma_de_pago" => ["efectivo", "cheque" , "transferencia", "mercado pago"][rand(0,3)],
       "descuento" => [10, 20 , 5, 15][rand(0,3)],
-      "monto_con_desc" => rand(1000,10000),
-      "monto_sin_desc" => rand(1000,10000),
-      "estado_emision" => 0,
       "faltan_datos" => 1
     ];
 });
