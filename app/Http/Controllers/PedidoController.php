@@ -34,8 +34,7 @@ class PedidoController extends Controller
           'details' => 'Sin autorización'
       ], 403);
       }else{
-
-        if($filter == true){
+        if($filter == "true"){
           $pedidos = Pedido::where("visto" , 0)->get();
         }else{
           $pedidos = Pedido::all();
@@ -51,6 +50,17 @@ class PedidoController extends Controller
             'data' => $pedidos
         ], 200);
       }
+    }
+
+    public function get_where(Request $request){
+
+      $pedidos = Pedido::where([
+        $request->all()
+        ])->get();
+      return response()->json([
+          'status' => 'success',
+          'data' => $pedidos
+      ], 200);
     }
 
     public function get_where_empleado()
@@ -230,6 +240,7 @@ class PedidoController extends Controller
     public function showAdmin($id)
     {
       $user = Auth::user();
+
       if($user->role != "admin" && $user->role != "empleado"){
         return response()->json([
           'status' => 'fail',
@@ -330,8 +341,6 @@ class PedidoController extends Controller
           'data' => "Se guardó el pedido con éxito"
         ], 200);
       }
-
-
     }
 
 }

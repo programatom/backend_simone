@@ -2,9 +2,18 @@
 
 use Illuminate\Http\Request;
 
+// ELIMINAR TIPO DE PEDIDO DE LA TABLA DE PEDIDOS
+
+//
+
+// LOS UNICOS PUNTOS CRITICOS CON LAS ENTREGAS Y LOS PEDIDOS
+
 Route::post('logout', 'Auth\LoginController@logout');
 Route::post("register", 'Auth\RegisterController@register');
 Route::post("login", 'Auth\LoginController@login');
+
+
+// RUTAS WEB
 
 Route::get('productos', 'ProductoController@index'); //WORKS
 Route::post('verificarCupon', 'CuponController@verify_coupon'); // WORKS
@@ -37,12 +46,14 @@ Route::group(['middleware' => 'auth:api'], function() {
     Route::post('empresasUpdate', 'EmpresaController@update');
 
     // 3- Pedidos
+
     Route::get('pedidos/{filter}', 'PedidoController@index');
     Route::get('pedidosShow', 'PedidoController@show');
     Route::get('pedidoShowAdmin/{id}', 'PedidoController@showAdmin');
     Route::post('pedidoStoreAdmin', 'PedidoController@storeAdmin'); // LISTO
     Route::post('pedidoUpdate', 'PedidoController@updateAdmin'); // LISTO
     Route::get('pedidosEmpleado', 'PedidoController@get_where_empleado'); // LISTO
+    Route::post('pedidoWhere', 'PedidoController@get_where');
 
 
     // 4- Entregas

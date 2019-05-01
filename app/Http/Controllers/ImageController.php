@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Image;
+use App\ElementoConImage;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Validator;
@@ -94,6 +96,13 @@ class ImageController extends Controller
         ], 403);
       }
 
+      $imagen_utilizada = ElementoConImage::where("imagen_id", $request->id)->get();
+      if(count($imagen_utilizada) > 0){
+        return response()->json([
+          'status' => 'fail',
+          'data' => "No se puede eliminar una imagen que esta siendo utilizada por algún producto"
+        ], 200);
+      }
       $filename = $request->nombre;
       $deletion = File::delete(storage_path()."/app/public/imagenes/".$filename);
 

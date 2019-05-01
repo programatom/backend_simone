@@ -84,6 +84,6 @@ $factory->define(App\Pedido::class, function (Faker $faker) {
       "dia_de_entrega" => ["1" , "2", "3", "4", "5" , "6", "7"][rand(0,6)],
       "forma_de_pago" => ["efectivo", "cheque" , "transferencia", "mercado pago"][rand(0,3)],
       "descuento" => [10, 20 , 5, 15][rand(0,3)],
-      "faltan_datos" => 1
+      "faltan_datos" => 0
     ];
 });
