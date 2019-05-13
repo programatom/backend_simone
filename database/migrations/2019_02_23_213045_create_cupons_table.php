@@ -18,7 +18,6 @@ class CreateCuponsTable extends Migration
             $table->string("codigo");
             $table->string("fecha_expiracion");
             $table->integer("porcentaje_descuento");
-            $table->string("tipo"); // unico multiple por usuario
             $table->timestamps();
         });
     }

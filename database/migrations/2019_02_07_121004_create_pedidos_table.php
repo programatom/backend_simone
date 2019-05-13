@@ -23,6 +23,7 @@ class CreatePedidosTable extends Migration
           $table->string("estado");
           $table->string("dia_de_entrega");
           $table->string("forma_de_pago");
+          $table->string("fecha_de_restauracion");
           $table->integer("expiracion_descuento");
           $table->integer("veces_por_semana");
           $table->integer("dias_sin_procesar_danger");

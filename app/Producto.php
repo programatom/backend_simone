@@ -25,8 +25,4 @@ class Producto extends Model
        return $this->belongsToMany(Pedido::class, 'productos_solicitados', 'producto_id', 'pedido_id');
     }
 
-    public function imagenes()
-  {
-     return $this->belongsToMany(Image::class , "elemento_con_images", "producto_id", "imagen_id")->withPivot('rol');
-  }
 }

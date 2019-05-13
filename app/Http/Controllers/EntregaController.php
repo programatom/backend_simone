@@ -157,11 +157,11 @@ class EntregaController extends Controller
          "estado" => "en proceso"
          ])->get();
 
-       $array_pedidos_habituales_hoy = $this->entrega_object($pedidos_habituales, "hoy");
+       $array_entregas_habituales_hoy = $this->entrega_object($pedidos_habituales, "hoy");
 
        return response()->json([
          "status"=> "success",
-         "data"=>$array_pedidos_habituales_hoy
+         "data"=>$array_entregas_habituales_hoy
        ],200);
     }
 
@@ -174,9 +174,9 @@ class EntregaController extends Controller
 
         $obj_habitual_pedido_hoy = new \StdClass();
 
-
         $user = $pedido_habitual->user()->get()->first();
         $rol;
+
         if($user->role == "particular"){
           $rol = Particular::where("user_id" , $user->id)->get()->first();
         }else{
@@ -415,9 +415,11 @@ class EntregaController extends Controller
     public function procesar_entrega(Request $request){
 
       $entrega_id = $request->entrega_id;
+
       if($entrega_id == -1){
         return $this->crear_entrega($request);
       }
+
       $data_request = (object) $request->data;
 
       $is_derivada = $data_request->derivada;
@@ -439,7 +441,6 @@ class EntregaController extends Controller
       // NO SE PUEDEN MODIFICAR ENTREGAS DERIVADAS !
       if($is_derivada == 1){
         return $this->derivar_entrega($entrega_id,$data_request,$pedido_entrega);
-
       }
 
       $estado_entrega = $data_request->estado;

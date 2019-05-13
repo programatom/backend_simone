@@ -17,48 +17,72 @@ use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
+
     public function index()
     {
       $user = Auth::user();
-
-      if($user->role != "admin"){
-        return response()->json([
-          'status' => 'fail',
-          'details' => 'Sin autorización'
-      ], 403);
-      }else{
-
-        $usuarios = User::all();
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $usuarios
-        ], 200);
-      }
+      return view("usuarios.index", [
+        "usuarios" => User::all()
+      ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
+    public function create()
+    {
+      return view("usuarios.create");
+    }
+
     public function store(Request $request)
     {
-        //
+
+      $messages = [
+          'required'=> 'El campo :attribute es requerido',
+          'string'=> 'Debe ingresar un dato de texto en el campo :attribute',
+          'email'=> 'Debe ingresar un email válido',
+          'confirmed'=> 'Ambas contraseñas deben coincidir!',
+          'unique' => 'El email debe ser único',
+          'min'=> 'La contraseña debe tener al menos 6 caracteres',
+      ];
+
+      $this->validate($request,
+      [
+          'name' => ['required', 'string', 'max:255'],
+          'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+          'password' => ['required', 'string', 'min:6'],
+          'role' => ['required','string']
+      ],$messages);
+
+      $request = $request->all();
+
+      $user = User::create([
+        'name' => $request['name'],
+        'email' => $request['email'],
+        'password' => Hash::make($request['password']),
+        'role' => $request["role"]
+      ]);
+
+      $role = $request["role"];
+
+      if($role == "empresa"){
+        $empresa = Empresa::create();
+        $empresa->user_id = $user->id;
+        $empresa->save();
+      }else if($role == "particular"){
+        $particular = Particular::create();
+        $particular->user_id = $user->id;
+        $particular->save();
+      }
+
+
+      return redirect("usuarios")->with("success" , "Se creo un nuevo usuario con éxito, en la pantalla de edición podrá agregar los datos de rol");
+
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  \App\CuponUso  $cuponUso
-     * @return \Illuminate\Http\Response
-     */
+    public function edit($id){
+      return view("usuarios.edit",[
+        "usuario" => User::findOrFail($id)
+      ]);
+    }
+
     public function showAdmin($id)
     {
       $user = Auth::user();
@@ -68,7 +92,8 @@ class UserController extends Controller
           'status' => 'fail',
           'mensaje' => 'Sin autorización'
       ], 403);
-      }
+
+    }
 
       $user = Auth::user()->where('id', $id)->get()[0];
       $pedidos = Pedido::where("user_id" , $id)->get();
@@ -109,10 +134,10 @@ class UserController extends Controller
      * @param  \App\CuponUso  $cuponUso
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request)
+    public function update($id)
     {
-        // MISMA FUNCION PARA USUARIO Y ADMIN
-        // USUARIO USO ID DEL AUTH, EN ADMIN USO CAMPO id de request
+        // EVALUAR COMO SE MANEJAN  LAS MODIFICACIONES EN EL SALDO
+        $user = User::findOrFail($id);
 
         $messages = [
           'string'=> 'Debe ingresar un dato de texto en el campo :attribute',
@@ -123,52 +148,30 @@ class UserController extends Controller
 
         ];
 
-        $user = Auth::user();
-
-        if($user->role == "admin"){
-          $id = $request->id;
-
-          // VALIDACION DE CAMBIO DE EMAIL, SI ES IGUAL AL GUARDADO, SACARLO DEL UPDATE
-
-          $user = User::where("id", $id)->get()[0];
-        };
-
-        $email_sent = $request->email;
-        if(isset($email_sent)){
-          $email_user = $user->email;
-          if($email_user == $email_sent){
-            $validator_array = $request->only(['password', 'name', "password_confirmation"]);
-          }else{
-            $validator_array = $request->all();
-          }
+        $email_enviado = request()->all()["email"];
+        $validation_array_email = array();
+        if($user->email == $email_enviado){
+          $validation_array_email = [ 'string', 'email', 'max:255'];
+        }else{
+          $validation_array_email = [ 'string', 'email', 'max:255', 'unique:users'];
         }
 
-        $validator = Validator::make($validator_array, [
+        request()->validate([
           'name' => [ 'string', 'max:255'],
-          'email' => [ 'string', 'email', 'max:255', 'unique:users'],
-          'password' => [ 'string', 'min:6', 'confirmed'],
-          "saldo" => ["integer"]
-        ],$messages);
+          'email' => $validation_array_email,
+          'password' => [ 'string', 'min:6']
+        ] , $messages);
 
-
-        if ($validator->fails()) {
-          return response()->json([
-              'status' => 'fail',
-              'data' => $validator->errors()
-          ], 200);
-        };
-
-        $user->update([
-          'name' => $request['name'],
-          'email' => $request['email'],
-          'password' => Hash::make($request['password']),
-          "saldo" => $request["saldo"]
-        ]);
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $user
-        ], 200);
+          $request = request()->all();
+          unset($request["_method"]);
+          unset($request["_token"]);
+          $user->update([
+            'name' => $request['name'],
+            'email' => $request['email'],
+            'password' => Hash::make($request['password'])
+          ]
+        );
+          return redirect("usuarios")->with("success" , "Se actualizó el usuario con éxito");
 
     }
 

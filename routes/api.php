@@ -27,7 +27,6 @@ Route::post('ingresarDatosParticular', 'ParticularController@update_web');
 Route::get("cron", "cronEmisionEntregaController@iniciar_proceso_cron");
 Route::post("reestablecerPedido", "cronEmisionEntregaController@reestablecer_estado_en_proceso");
 
-
 Route::group(['middleware' => 'auth:api'], function() {
 
 
@@ -70,7 +69,7 @@ Route::group(['middleware' => 'auth:api'], function() {
     Route::get("entregasDanger", "EntregaController@get_entregas_danger");
 
     // 5- Productos
-    Route::get('productos', 'ProductoController@index');
+    Route::get('productos', 'ProductoController@index_api');
     Route::get('productosFull', 'ProductoController@indexFull');
     Route::get('productoShow/{id}', 'ProductoController@show');
     Route::post('crearProducto', 'ProductoController@store');
@@ -86,10 +85,6 @@ Route::group(['middleware' => 'auth:api'], function() {
     Route::get('cupones', 'CuponController@index');
     Route::post('cuponesStore', 'CuponController@store');
     Route::post('cuponesDelete', 'CuponController@delete');
-
-
-    // 8- Cupones Use
-    Route::post('cuponesUsoStore', 'CuponUsoController@update');
 
     // 9- Empleados
     Route::post('empleadoUpdate', 'EmpleadoController@update');

@@ -50,13 +50,17 @@ class cronEmisionEntregaController extends Controller
       ]);
     }
 
-    public function iniciar_proceso_cron(){
+    public function iniciar_proceso_cron($hoy = null){
+
+      if ($hoy == null){
+        $hoy = date("Y/m/d");
+      }
 
       $pedidos = Pedido::all();
       $arrayRespuestas = array();
       foreach($pedidos as $pedido){
         $respuesta = new \stdClass ();
-        $respuesta->respuestaFuncion = $this->emission_logic($pedido);
+        $respuesta->respuestaFuncion = $this->emission_logic($pedido, $hoy);
         $respuesta->pedido = $pedido;
 
         $arrayRespuestas[] = $respuesta;
@@ -71,11 +75,7 @@ class cronEmisionEntregaController extends Controller
       ],200);
     }
 
-    public function emission_logic($pedido){
-
-      $hoy =date("Y/m/d");
-      //$hoy = "2019/04/10";
-
+    public function emission_logic($pedido, $hoy){
 
       if($this->pedido_with_no_data($pedido)){
         return "no data";
@@ -111,7 +111,7 @@ class cronEmisionEntregaController extends Controller
 
         // Se entrego?
 
-        if($ultima_entrega->estado == "entregada"){
+        if($ultima_entrega->estado == "entregada" || $ultima_entrega->estado == "cancelada" ){
 
           // Se realizó la entrega emitida. Se emite la siguiente que va a ser en el dia igual al dia de entrega que esté despues de la suma entre la fecha de creacion y los dias a añadir por periodicidad en el caso de que no haya dias de alarma. Antes checkeo si se entregó dentro del rango previsto o si estuvo algunos días sin procesarse el pedido
 
@@ -125,51 +125,32 @@ class cronEmisionEntregaController extends Controller
 
           if($ultima_entrega->adelanta == 1){
 
-            if($ultima_entrega->filtro_counter == -1){
+            $obj_periodicidad = new \stdClass();
+            $obj_periodicidad->semanal = 7;
+            $obj_periodicidad->quincenal = 14;
+            $obj_periodicidad->mensual = 28;
+
+            if($pedido->fecha_de_restauracion == null){
               $entregas_a_adelantar = $ultima_entrega->entregas_adelantadas;
-              $valor_periodicidad = 0;
-              switch ($periodicidad_pedido) {
-                case 'semanal':
-                  $valor_periodicidad = 7;
-                  break;
-
-                case 'mensual':
-                  $valor_periodicidad = 28;
-                  break;
-
-                case 'quincenal':
-                  $valor_periodicidad = 14;
-                  break;
-
-                case 'diario':
-                  // PENDIENTE DEFINICIÓN
-                  break;
+              $periodicidad_number = $obj_periodicidad->$periodicidad_pedido;
+              $dias_adelantados = $periodicidad_number * $entregas_a_adelantar;
+              if($pedido->danger == 1){
+                $previous_date_with_correct_day = $this->get_next_or_previous_date_with_this_day($pedido->dia_de_entrega, $hoy , "previous");
+                $fecha_de_restauracion = date('Y/m/d', strtotime($previous_date_with_correct_day. ' + '.$dias_adelantados.' days'));
+                $pedido->fecha_de_restauracion = $fecha_de_restauracion;
+                $pedido->save();
+                return "adelantada";
+              }else{
+                $fecha_de_restauracion = date('Y/m/d', strtotime($last_potential_date. ' + '.$dias_adelantados.' days'));
+                $pedido->fecha_de_restauracion = $fecha_de_restauracion;
+                $pedido->save();
+                return "adelantada";
               }
-              $hoyTIME = strtotime($hoy);
-              $last_potential_dateTIME = strtotime($last_potential_date);
-
-              //TIENE QUE CAER A LA EMISION DEVUELTA SI O SI EN UN DIA DEL PERIODO ENTRE LA FECHA DESEADA Y LA FECHA POSIBLE ANTERIOR.
-
-              $diferencia_entre_hoy_y_potencial = $hoyTIME - $last_potential_dateTIME;
-
-              if($diferencia_entre_hoy_y_potencial < 0){
-                $diferencia_entre_hoy_y_potencial = 0;
-              }
-
-              $filtro_counter = ($entregas_a_adelantar + 1) * $valor_periodicidad - ($diferencia_entre_hoy_y_potencial) - 2;
-              $ultima_entrega->observaciones = $diferencia_entre_hoy_y_potencial;
-              $ultima_entrega->filtro_counter = $filtro_counter;
-              $ultima_entrega->save();
-              $this->en_proceso_state($pedido);
-              return "adelantada";
-            }
-
-            if($ultima_entrega->filtro_counter == 0){
+            }else if($pedido->fecha_de_restauracion == $hoy){
+              $pedido->fecha_de_restauracion = "";
+              $pedido->save();
             return $this->emitir_entrega_partiendo_de_hoy($periodicidad_pedido, $hoy, $dias_de_entrega, $pedido, $usuario_del_pedido);
             }else{
-
-              $ultima_entrega->filtro_counter = $ultima_entrega->filtro_counter - 1;
-              $ultima_entrega->save();
               return $this->en_proceso_state($pedido);
             }
           }
@@ -375,13 +356,22 @@ class cronEmisionEntregaController extends Controller
 
       }
       // $day , $last_potential_date = ""
-      public function get_next_or_previous_date_with_this_day($day , $fecha_piso, $next_or_previous = "next"){
+      public function get_next_or_previous_date_with_this_day($day , $fecha_piso , $next_or_previous = "next")
+      {
         /*
 
         $day = $request->dia;
         $fecha_piso = $request->last_potential_date;
 
+        $day = 1;
+        $fecha_piso = date("Y/m/d");
+        $next_or_previous = "previous";
         */
+        if($next_or_previous == "next"){
+          $modifier = "+";
+        }else{
+          $modifier = "-";
+        }
 
 
 
@@ -391,20 +381,12 @@ class cronEmisionEntregaController extends Controller
         $date_counter = 0;
 
         while( $day != $format_N_date_check){
-
-          $protector_de_loop_infinito = $protector_de_loop_infinito + 1;
-          if($protector_de_loop_infinito > 10){
-            return "loopinfinito";
-            break;
-          }
-
-
-          $new_emission_date = date('Y/m/d', strtotime($fecha_piso.' + '.$date_counter.' day'));
+          $new_emission_date = date('Y/m/d', strtotime($fecha_piso.' '.$modifier.' '.$date_counter.' day'));
           $date_counter = $date_counter + 1;
           $date_time_1 = new \DateTime($new_emission_date);
           $format_N_date_check = $date_time_1->format("N");
       }
-      return $new_emission_date;
+        return $new_emission_date;
       }
 
     }

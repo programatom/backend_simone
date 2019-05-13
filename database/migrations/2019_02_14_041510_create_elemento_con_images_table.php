@@ -17,7 +17,6 @@ class CreateElementoConImagesTable extends Migration
             $table->increments('id');
             $table->integer('producto_id');
             $table->integer('imagen_id');
-            $table->string('rol');
             $table->timestamps();
         });
     }

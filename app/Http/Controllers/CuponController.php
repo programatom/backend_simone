@@ -15,48 +15,50 @@ class CuponController extends Controller
      */
     public function index()
     {
-      $user = Auth::user();
-
-      if($user->role != "admin"){
-        return response()->json([
-          'status' => 'fail',
-          'details' => 'Sin autorización'
-      ], 403);
-      }else{
-
-        $cupones = Cupon::all();
-        foreach($cupones as $cupon){
-          $cupon->usos = $cupon->usos()->get();
-        };
-        return response()->json([
-            'status' => 'success',
-            'data' => $cupones
-        ], 200);
-      }
-
+      return view("cupones.index",[
+        "cupones" => Cupon::all()
+      ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function delete(Request $request)
+    public function create()
     {
-      $user = Auth::user();
-
-      if($user->role != "admin"){
-        return response()->json([
-          'status' => 'fail',
-          'details' => 'Sin autorización'
-      ], 403);
-      }else{
-        Cupon::where("id",$request->id)->delete();
-        return response()->json([
-          'status' => 'success'
-      ], 200);
-      }
+      return view("cupones.create");
     }
+
+    public function edit($id)
+    {
+      $cupon = Cupon::findOrFail($id);
+      return view("cupones.edit", [
+        "cupon" => $cupon,
+      ]);
+    }
+
+    public function update($id){
+      $cupon = Cupon::findOrFail($id);
+      $codigo_enviado = request()->all()["codigo"];
+      $validation_array = array();
+      if($cupon->codigo == $codigo_enviado){
+        $validation_array = ["required"];
+      }else{
+        $validation_array = ["required", "unique:cupons"];
+      }
+      request()->validate([
+        "codigo" => $validation_array,
+        "fecha_expiracion" => ['required'],
+        "porcentaje_descuento" => ['required'],
+      ],[
+        "required" => "El campo :attribute es requerido",
+        "unique" => "El campo :attribute debe ser único"
+      ]);
+      $request = request()->all();
+      unset($request["_method"]);
+      unset($request["_token"]);
+      $cupon->update($request);
+      return redirect("cupones")->with("success" , "Se actualizó el cupón con éxito");
+    }
+
+
+
 
     /**
      * Store a newly created resource in storage.
@@ -66,39 +68,26 @@ class CuponController extends Controller
      */
     public function store(Request $request)
     {
-      $user = Auth::user();
-
-      if($user->role != "admin"){
-        return response()->json([
-          'status' => 'fail',
-          'details' => 'Sin autorización'
-      ], 403);
-      }else{
 
         $messages = [
             'required'=> 'El campo :attribute es requerido',
             "unique"=> "El campo :attribute debe ser único, ya hay un cupon de descuento con este código!"
         ];
-        $validator = Validator::make($request->all(), [
+
+        // NOTA VALIDAR FORMATO DE FECHA Y RANGO DEL DESCUENTO Y AGREGAR GENERADOR AUTOMATICO DE CODIGO
+
+        $this->validate($request, [
           "codigo" => ["required", "unique:cupons"],
           "fecha_expiracion" => "required",
-          "porcentaje_descuento" => "required",
-          "tipo" => "required"
+          "porcentaje_descuento" => "required"
        ], $messages);
 
-       if ($validator->fails()) {
-         return response()->json([
-             'status' => 'fail',
-             'data' => $validator->errors()
-         ], 200);
-       }else{
-         $cupon = Cupon::create($request->all());
-         return response()->json([
-             'status' => 'success',
-             'data' => $cupon
-         ], 200);
-       }
-      }
+       $request = $request->all();
+       unset($request["_token"]);
+
+       Cupon::create($request);
+
+       return redirect("cupones")->with("success" , "Se creo un nuevo cupón con éxito");
     }
 
     /**

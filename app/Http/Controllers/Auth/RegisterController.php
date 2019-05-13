@@ -34,7 +34,7 @@ class RegisterController extends Controller
      *
      * @var string
      */
-    protected $redirectTo = '/home';
+    protected $redirectTo = '/';
 
     /**
      * Create a new controller instance.
@@ -44,6 +44,7 @@ class RegisterController extends Controller
     public function __construct()
     {
         $this->middleware('guest');
+
     }
 
     /**
@@ -103,6 +104,10 @@ class RegisterController extends Controller
     protected function registered(Request $request, $user)
     {
         $user->generateToken();
+
+        if(isset($request->web)){
+          return redirect("usuarios")->with("success", "Se creó el usuario con éxito");
+        }
 
         return response()->json(['data' => $user->toArray(),
                                  "status" => "success"], 201);
