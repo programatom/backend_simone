@@ -34,15 +34,13 @@
         <thead>
           <tr>
             <th scope="col">#</th>
-
-            <th scope="col">Descuento</th>
+            <th scope="col">Usuario</th>
             <th scope="col">Periodicidad</th>
-            <th scope="col">Repartidor_habitual_id</th>
-            <th scope="col">Repartidor_excepcional_id</th>
+            <th scope="col">Repartidor habitual</th>
+            <th scope="col">Repartidor excepcional</th>
             <th scope="col">Estado</th>
-            <th scope="col">Dia_de_entrega</th>
-            <th scope="col">Forma_de_pago</th>
-            <th scope="col">Expiracion_descuento</th>
+            <th scope="col">Dia de entrega</th>
+            <th scope="col">Expiracion descuento</th>
 
             <th scope="col">*</th>
 
@@ -52,7 +50,7 @@
           @foreach ($pedidos as $pedido)
           <tr>
             <th scope="row">{{$pedido->id}}</th>
-            <td>{{$pedido->descuento}}</td>
+            <td>{{$pedido->user()->get()[0]->email}}</td>
             <td>{{$pedido->periodicidad}}</td>
             <td>{{User::find($pedido->repartidor_habitual_id)->name}}</td>
             <td>{{User::find($pedido->repartidor_excepcional_id)->name}}</td>
@@ -70,7 +68,6 @@
 
             echo($dias_de_entrega[$pedido->dia_de_entrega]);?>
             </td>
-            <td>{{$pedido->forma_de_pago}}</td>
             <td>{{$pedido->expiracion_descuento}}</td>
 
             <td><a class="btn btn-success btn-sm" href="/pedidos/{{$pedido->id}}/edit">

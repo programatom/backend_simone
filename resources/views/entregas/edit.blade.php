@@ -183,15 +183,9 @@
 
                 <div class="form-group">
                   <label>Estado</label>
-                  <select name = "estado" class="browser-default custom-select">
-                    @if($pedido->estado == "discontinuado")
+                  <select name = "estado" class="browser-default custom-select" value="{{$pedido->estado}}">
                     <option value="en proceso">En proceso</option>
-                    <option value="discontinuado" selected>Discontinuado</option>
-                    @else
-                    <option value="en proceso" selected>En proceso</option>
                     <option value="discontinuado">Discontinuado</option>
-                    @endif
-
                   </select>
                 </div>
 

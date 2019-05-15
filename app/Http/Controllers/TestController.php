@@ -20,11 +20,11 @@ class TestController extends Controller
         if($i != 1){
           $hoy = date('Y/m/d', strtotime($hoy.' + 1 day'));
         }
-        $cron->iniciar_proceso_cron($hoy);
+        $cron_answer = $cron->iniciar_proceso_cron($hoy);
+        $test_controller_data = $this->procesar_entregas_de_hoy($hoy);
 
         // Ahora todas las entregas de hoy debería procesarlas
-        $test_data = $this->procesar_entregas_de_hoy($hoy);
-        $collect_test_data[] = $test_data;
+        $collect_test_data[] = $cron_answer;
     }
     $hoy = date('Y/m/d', strtotime($hoy.' + 1 day'));
     $entregas = Entrega::all();

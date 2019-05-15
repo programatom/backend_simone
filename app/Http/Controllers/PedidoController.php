@@ -151,7 +151,7 @@ class PedidoController extends Controller
     public function edit($id){
       $pedido = Pedido::findOrFail($id);
 
-      $entregas = $pedido->entregas()->get();
+      $entregas = $pedido->entregas()->orderByRaw('id DESC')->get();
       $usuario = $pedido->user()->get();
       $productos = $pedido->productos()->get();
       foreach($productos as $producto){
@@ -185,7 +185,7 @@ class PedidoController extends Controller
         "empleados" => $empleados,
         "periodicidad_select" => $periodicidad_select,
         "dias_de_entrega" => $dias_de_entrega,
-        "formas_de_pago" => $formas_de_pago
+        "formas_de_pago" => $formas_de_pago,
       ]);
     }
 
@@ -208,16 +208,24 @@ class PedidoController extends Controller
       return redirect(url()->previous());
     }
     public function update($id){
+
       $messages = [
           'required' => 'El campo :attribute es requerido',
       ];
       $pedido = Pedido::find($id);
+      $request = request()->all();
+
+      if($pedido->dia_de_entrega != $request["dia_de_entrega"]){
+        $pedido->date_change_alert = 1;
+      }else{
+        $pedido->date_change_alert = 0;
+      }
+      $pedido->save();
+
       request()->validate([
         "descuento" => "required",
         "expiracion_descuento" => ["required" , new DateFormat],
       ],$messages);
-
-      $request = request()->all();
       unset($request["_method"]);
       unset($request["_token"]);
       $pedido->update($request);

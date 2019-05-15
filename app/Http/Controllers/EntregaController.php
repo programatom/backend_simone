@@ -15,6 +15,8 @@ use App\ProductosSolicitado;
 
 
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+
 use Validator;
 
 class EntregaController extends Controller
@@ -24,11 +26,11 @@ class EntregaController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index_api()
     {
       $user = Auth::user();
 
-      if($user->role != "admin"){
+      if($user->role != "empleado"){
         return response()->json([
           'status' => 'fail',
           'details' => 'Sin autorización'
@@ -49,6 +51,23 @@ class EntregaController extends Controller
         ], 200);
       }
     }
+
+    public function index(){
+        $entregas = DB::table("entregas")->join('pedidos', 'entregas.pedido_id', '=', 'pedidos.id')->select('entregas.*','pedidos.repartidor_habitual_id', "pedidos.id as pedido_id");
+        return view("entregas.index", [
+        "entregas" => $entregas->orderByRaw("id DESC")->paginate(25),
+        "empleados" => User::where("role" , "empleado")->get()
+      ]);
+    }
+
+    public function destroy($id)
+    {
+       $toro = Toro::findOrFail($id);
+       $nombre = $toro->nombre;
+       $toro->delete();
+       return redirect("toros")->with("success" , "Se eliminó ".$nombre." con éxito");
+    }
+
 
     public function get_entregas_danger(){
       $user = Auth::user();
@@ -343,20 +362,20 @@ class EntregaController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request)
+    public function update($id)
     {
-
-     $id_entrega = $request->$id_entrega;
-
-     $entrega = Entrega::where("id", $id_entrega)->get();
-
-     $entrega->update((array) $request->update);
-
-     return response()->json([
-       'status' => 'success',
-       'data' => $entrega
-     ], 200);
-
+     $entrega = Entrega::findOrFail($id);
+     $request = request()->all();
+     unset($request["_method"]);
+     unset($request["_token"]);
+     if(isset($request["estado"])){
+       $entrega->update($request);
+       $entrega->fecha_de_procesamiento_real = date("Y/m/d");
+       $entrega->save();
+     }else{
+       $entrega->update($request);
+     }
+     return redirect()->back();
     }
 
     public function reintentar_entrega($entrega_id){

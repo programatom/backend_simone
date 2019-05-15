@@ -69,10 +69,7 @@ class cronEmisionEntregaController extends Controller
           "data"=>$this->emission_logic($pedido)]);
       */
     }
-      return response()->json([
-        "data"=> "Se barrio toda la tabla de pedidos",
-        "dataCron" => $arrayRespuestas
-      ],200);
+      return $arrayRespuestas;
     }
 
     public function emission_logic($pedido, $hoy){
@@ -87,7 +84,7 @@ class cronEmisionEntregaController extends Controller
 
       $usuario_del_pedido = $pedido->user()->get()->first();
       $periodicidad_pedido = $pedido->periodicidad;
-      $dias_de_entrega = $pedido->dia_de_entrega;
+      $dia_de_entrega = $pedido->dia_de_entrega;
 
 
       // Si el pedido esta discountinuado entonces se debería realizar alguna lógica para su relanzamiento
@@ -100,7 +97,7 @@ class cronEmisionEntregaController extends Controller
            $pedido->danger < 0){
 
           $this->emitir_entrega_partiendo_de_hoy($periodicidad_pedido, $hoy,
-        $dias_de_entrega, $pedido, $usuario_del_pedido);
+        $dia_de_entrega, $pedido, $usuario_del_pedido);
 
           return "se reestablece un cancelado, emite un inicial o un pedido adelantado";
 
@@ -148,8 +145,9 @@ class cronEmisionEntregaController extends Controller
               }
             }else if($pedido->fecha_de_restauracion == $hoy){
               $pedido->fecha_de_restauracion = "";
+              $pedido->adelanta = 0;
               $pedido->save();
-            return $this->emitir_entrega_partiendo_de_hoy($periodicidad_pedido, $hoy, $dias_de_entrega, $pedido, $usuario_del_pedido);
+              return $this->emitir_entrega_partiendo_de_hoy($periodicidad_pedido, $hoy, $dia_de_entrega, $pedido, $usuario_del_pedido);
             }else{
               return $this->en_proceso_state($pedido);
             }
@@ -158,8 +156,13 @@ class cronEmisionEntregaController extends Controller
           if($pedido->danger == 0){
 
             // Acá emito una entrga basandome en la ultima entrega potencial e incrementando su valor por la periodicidad. No hubo danger
-
-            return $this->emitir_entrega_pedido_a_tiempo($periodicidad_pedido, $last_potential_date, $pedido, $usuario_del_pedido);
+            if($pedido->date_change_alert == 1){
+              $pedido->date_change_alert = 0;
+              $pedido->save();
+              return $this->emitir_entrega_partiendo_de_hoy($periodicidad_pedido, $last_potential_date, $dia_de_entrega, $pedido, $usuario_del_pedido);
+            }else{
+              return $this->emitir_entrega_pedido_a_tiempo($periodicidad_pedido, $last_potential_date, $pedido, $usuario_del_pedido);
+            }
 
 
           }else{
@@ -233,17 +236,13 @@ class cronEmisionEntregaController extends Controller
       }
 
       public function pedido_with_no_data($pedido){
-
-        if($pedido->dia_de_entrega == "" || $pedido->repartidor_habitual == ""){
-
-          // El pedido es nuevo y aun faltan datos, no se emite una entrega porque faltan las variables
+        if($pedido->dia_de_entrega == "" || $pedido->repartidor_habitual_id == 0){
 
           $pedido->faltan_datos = 1;
           $pedido->save();
 
           return true;
         }else{
-
           $pedido->faltan_datos = 0;
           $pedido->save();
           return false;
@@ -281,8 +280,8 @@ class cronEmisionEntregaController extends Controller
       }
 
       public function emitir_entrega_partiendo_de_hoy($periodicidad_pedido, $hoy,
-    $dias_de_entrega, $pedido, $usuario_del_pedido){
-        $nueva_fecha_potencial = $this->get_new_potencial_date($periodicidad_pedido, $hoy, $dias_de_entrega);
+    $dia_de_entrega, $pedido, $usuario_del_pedido){
+        $nueva_fecha_potencial = $this->get_new_potencial_date($periodicidad_pedido, $hoy, $dia_de_entrega);
 
         return $this->emitir_entrega($pedido, $usuario_del_pedido, $nueva_fecha_potencial);
 
@@ -324,12 +323,12 @@ class cronEmisionEntregaController extends Controller
 
           // Acá debería emitise en el proxima dia, teniendo en cuenta el dia actual si hoy es ese dia, entonces evaluo
           // sumo dias al dia de hoy hasta que el format de la fecha resultante sea igual al numero de dia que necesito
-          $dias_de_entrega = explode(",", $dia_de_entrega );
+          $dia_de_entrega = explode(",", $dia_de_entrega );
           $last_potential_date_obj = new \DateTime($fecha_piso);
           $siguiente_N_dia_de_entrega = "0";
           $index_dia_de_entrega_hoy = 0;
 
-          foreach($dias_de_entrega as $key => $dia_de_entrega){
+          foreach($dia_de_entrega as $key => $dia_de_entrega){
             if($dia_de_entrega == $fecha_piso_obj->format("N")){
               // Tengo que ver en que punto de la semana estoy, si hoy es dia de entrega el siguiente dia de entrega es hoy
               $siguiente_N_dia_de_entrega = $dia_de_entrega;
@@ -345,10 +344,10 @@ class cronEmisionEntregaController extends Controller
           // la proxima entrega potencial seria el proximo elemento del array, o ver si estoy en el ultimo index del array
 
           $index_siguiente_dia = $index_dia_de_entrega_hoy + 1;
-          if($index_siguiente_dia > count($dias_de_entrega) - 1){
-            $siguiente_N_dia_de_entrega = $dias_de_entrega[0];
+          if($index_siguiente_dia > count($dia_de_entrega) - 1){
+            $siguiente_N_dia_de_entrega = $dia_de_entrega[0];
           }else{
-            $siguiente_N_dia_de_entrega = $dias_de_entrega[$index_siguiente_dia];
+            $siguiente_N_dia_de_entrega = $dia_de_entrega[$index_siguiente_dia];
           }
           return $this->get_next_or_previous_date_with_this_day($siguiente_N_dia_de_entrega , $fecha_piso);
           */

@@ -38,6 +38,8 @@
                   <div class="card-body">
                     <strong>Fecha de expiración: </strong>{{$cupon->fecha_expiracion}} <br>
                     <strong>Descuento: </strong>% {{$cupon->porcentaje_descuento}} <br>
+                    <strong>Duración: </strong> {{$cupon->duracion_descuento}} meses<br>
+
                     <a class="btn btn-success btn-block" href="/cupones/{{$cupon->id}}/edit">
                       Editar
                     </a>

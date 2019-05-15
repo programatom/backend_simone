@@ -30,6 +30,21 @@
         </div>
       </div>
       <div class="row justify-content-center">
+        <div class="col-12" style="padding:0">
+          <form action="/user_search" method="POST">
+            @csrf
+            <div class="row justify-content-center">
+              <div class="col-8">
+                <input class="form-control" type="text" name ="filtro" placeholder="Filtro" aria-label="Search">
+              </div>
+              <div class="col-2">
+                <button type="submit" class="btn btn-primary">Buscar</button>
+              </div>
+            </div>
+          </form>
+
+        </div>
+
         <table class="table">
           <thead>
             <tr>

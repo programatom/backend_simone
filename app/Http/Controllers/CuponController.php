@@ -6,6 +6,8 @@ use App\Cupon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Validator;
+use App\Rules\DateFormat;
+
 class CuponController extends Controller
 {
     /**
@@ -44,7 +46,7 @@ class CuponController extends Controller
       }
       request()->validate([
         "codigo" => $validation_array,
-        "fecha_expiracion" => ['required'],
+        "fecha_expiracion" => ['required', new DateFormat],
         "porcentaje_descuento" => ['required'],
         "duracion_descuento" => ['required'],
 
@@ -80,7 +82,7 @@ class CuponController extends Controller
 
         $this->validate($request, [
           "codigo" => ["required", "unique:cupons"],
-          "fecha_expiracion" => "required",
+          "fecha_expiracion" => ["required", new DateFormat],
           "porcentaje_descuento" => "required|integer",
           "duracion_descuento" => "required|integer"
 
