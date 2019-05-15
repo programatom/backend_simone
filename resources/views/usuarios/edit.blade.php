@@ -3,22 +3,27 @@
 @section('content')
   <div class="container">
     <div class="row justify-content-center">
-      <div class="col-5">
+      <div class="col-6">
+        @if ($errors->any())
+        <div class="alert alert-danger">
+          <ul>
+            @foreach ($errors->all() as $error)
+            <li>{{ $error }}</li>
+            @endforeach
+          </ul>
+        </div>
+        @endif
+      </div>
+    </div>
+    <div class="row justify-content-center">
+      <div class="col-6">
         <div class="card">
           <div class="card-body">
 
             <form action="/usuarios/{{ $usuario->id }}" method="POST">
               @csrf
               {{ method_field("PATCH")}}
-          @if ($errors->any())
-          <div class="alert alert-danger">
-            <ul>
-              @foreach ($errors->all() as $error)
-              <li>{{ $error }}</li>
-              @endforeach
-            </ul>
-          </div>
-          @endif
+
           <div class="form-group">
             <label>Nombre</label>
             <input type="text" name="name" class="form-control" value="{{$usuario->name}}"></input>
@@ -39,6 +44,21 @@
         </form>
           </div>
         </div>
+      </div>
+      <div class="col-6">
+        @if ($role_obj->has_role)
+          @if($role_obj->role == "particular")
+            @component("usuarios.components.particular", [
+              "particular" => $particular
+            ])
+            @endcomponent
+          @else
+            @component("usuarios.components.empresa", [
+              "empresa" => $empresa
+            ])
+            @endcomponent
+          @endif
+        @endif
       </div>
     </div>
   </div>

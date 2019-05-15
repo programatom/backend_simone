@@ -16,18 +16,18 @@ class CreateEmpresasTable extends Migration
         Schema::create('empresas', function (Blueprint $table) {
           $table->increments('id');
           $table->integer('user_id');
-          $table->string('razon_social');
-          $table->string('CUIT');
-          $table->string('dom_fiscal');
-          $table->string("telefono");
-          $table->string("calle");
-          $table->string("numero");
-          $table->string("piso");
-          $table->string("depto");
-          $table->string("localidad");
-          $table->string("provincia");
-          $table->string("nombre_receptor");
-          $table->string("observaciones");
+          $table->string('razon_social')->nullable();
+          $table->string('CUIT')->nullable();
+          $table->string('dom_fiscal')->nullable();
+          $table->string("telefono")->nullable();
+          $table->string("calle")->nullable();
+          $table->string("numero")->nullable();
+          $table->string("piso")->nullable();
+          $table->string("depto")->nullable();
+          $table->string("localidad")->nullable();
+          $table->string("provincia")->nullable();
+          $table->string("nombre_receptor")->nullable();
+          $table->string("observaciones")->nullable();
           $table->timestamps();
         });
     }

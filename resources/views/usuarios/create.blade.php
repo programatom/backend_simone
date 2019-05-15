@@ -34,6 +34,7 @@
             <select name = "role" class="browser-default custom-select" value="particular">
               <option value="particular">Particular</option>
               <option value="empresa">Empresa</option>
+              <option value="empleado">Empleado</option>
             </select>
             <small class="form-text text-muted">Recuerde que luego de ingresado el rol no se puede modificar</small>
           </div>

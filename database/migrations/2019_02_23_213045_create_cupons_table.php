@@ -17,6 +17,7 @@ class CreateCuponsTable extends Migration
             $table->increments('id');
             $table->string("codigo");
             $table->string("fecha_expiracion");
+            $table->string("duracion_descuento");
             $table->integer("porcentaje_descuento");
             $table->timestamps();
         });

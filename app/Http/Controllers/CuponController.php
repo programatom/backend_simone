@@ -46,6 +46,8 @@ class CuponController extends Controller
         "codigo" => $validation_array,
         "fecha_expiracion" => ['required'],
         "porcentaje_descuento" => ['required'],
+        "duracion_descuento" => ['required'],
+
       ],[
         "required" => "El campo :attribute es requerido",
         "unique" => "El campo :attribute debe ser único"
@@ -79,7 +81,9 @@ class CuponController extends Controller
         $this->validate($request, [
           "codigo" => ["required", "unique:cupons"],
           "fecha_expiracion" => "required",
-          "porcentaje_descuento" => "required"
+          "porcentaje_descuento" => "required|integer",
+          "duracion_descuento" => "required|integer"
+
        ], $messages);
 
        $request = $request->all();

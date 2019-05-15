@@ -11,6 +11,7 @@ class Cupon extends Model
       "codigo",
       "fecha_expiracion",
       "porcentaje_descuento",
+      "duracion_descuento",
       "tipo"
     ];
 

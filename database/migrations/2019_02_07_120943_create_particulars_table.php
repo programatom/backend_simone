@@ -16,14 +16,14 @@ class CreateParticularsTable extends Migration
         Schema::create('particulars', function (Blueprint $table) {
           $table->increments('id');
           $table->integer("user_id");
-          $table->string("telefono");
-          $table->string("calle");
-          $table->string("numero");
-          $table->string("piso");
-          $table->string("depto");
-          $table->string("localidad");
-          $table->string("provincia");
-          $table->string("observaciones");
+          $table->string("telefono")->nullable();
+          $table->string("calle")->nullable();
+          $table->string("numero")->nullable();
+          $table->string("piso")->nullable();
+          $table->string("depto")->nullable();
+          $table->string("localidad")->nullable();
+          $table->string("provincia")->nullable();
+          $table->string("observaciones")->nullable();
           $table->timestamps();
         });
     }

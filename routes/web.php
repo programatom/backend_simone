@@ -16,6 +16,10 @@ Route::get('/', function () {
     return view('home');
 })->middleware("auth");
 
+Route::get('/home', function () {
+    return view('home');
+})->middleware("auth");
+
 Route::get('/simulate', "TestController@simulate");
 Route::get('/check_day', "TestController@check_proper_day");
 Route::get('/check_pedidos', "TestController@recover_certain_pedidos_with_entregas");
@@ -25,4 +29,10 @@ Auth::routes();
 
 Route::resource("productos" ,"ProductoController")->middleware('auth');
 Route::resource("cupones" ,"CuponController")->middleware('auth');
-Route::resource("usuarios" ,"UserCOntroller")->middleware('auth');
+Route::resource("usuarios" ,"UserController")->middleware('auth');
+Route::resource("particulares" ,"ParticularController")->middleware('auth');
+Route::resource("empresas" ,"EmpresaController")->middleware('auth');
+Route::post("producto_pedido", "PedidoController@producto_pedido")->middleware('auth');
+Route::post("producto_pedido_delete", "PedidoController@producto_pedido_delete")->middleware('auth');
+
+Route::resource("pedidos" ,"PedidoController")->middleware('auth');

@@ -15,7 +15,7 @@ Route::post("login", 'Auth\LoginController@login');
 
 // RUTAS WEB
 
-Route::get('productos', 'ProductoController@index'); //WORKS
+Route::get('productos', 'ProductoController@index_api'); //WORKS
 Route::post('verificarCupon', 'CuponController@verify_coupon'); // WORKS
 Route::post('muestrasGratis', 'MuestrasPedidoController@store'); // WORKS
 Route::post('ingresarPedido', 'PedidoController@store'); //WORKS

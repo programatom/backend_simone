@@ -30,6 +30,11 @@
                 <label>Porcentaje de descuento</label>
                 <input type="number" name="porcentaje_descuento" class="form-control" value="{{ old('porcentaje_descuento') }}"></input>
               </div>
+              <div class="form-group">
+                <label>Duración del descuento</label>
+                <input type="number" name="duracion_descuento" class="form-control" value="{{ old('duracion_descuento') }}"></input>
+                <small class="form-text text-muted">En cantidad de meses</small>
+              </div>
               <div class="col-12 col-lg-12">
                 <button type="submit" class="btn btn-primary btn-block">Crear cupón</button>
               </div>

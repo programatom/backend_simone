@@ -8,6 +8,7 @@ use App\Empleado;
 use App\Particular;
 use App\Empresa;
 use Validator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 
@@ -78,8 +79,25 @@ class UserController extends Controller
     }
 
     public function edit($id){
+      $usuario = User::findOrFail($id);
+      $role = $usuario->role;
+      $roles_to_show = array("particular" , "empresa");
+      $has_role = false;
+      $role_data = "";
+      if(in_array($role, $roles_to_show)){
+        $has_role = true;
+        $role_data = DB::table($role.'s')->where("user_id",$id)->get()->first();
+      }
+
+      $role_obj = new \stdClass();
+      $role_obj->has_role = $has_role;
+      $role_obj->role = $role;
+
       return view("usuarios.edit",[
-        "usuario" => User::findOrFail($id)
+        "usuario" => $usuario,
+        "role_obj" => $role_obj,
+        "particular" => $role_data,
+        "empresa" => $role_data
       ]);
     }
 

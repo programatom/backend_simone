@@ -87,12 +87,6 @@ class ProductoController extends Controller
     }
 
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  \App\Producto  $producto
-     * @return \Illuminate\Http\Response
-     */
     public function show($id)
     {
 
@@ -105,14 +99,6 @@ class ProductoController extends Controller
       ], 200);
     }
 
-
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Producto  $producto
-     * @return \Illuminate\Http\Response
-     */
     public function update($id)
     {
       $producto = Producto::findOrFail($id);
@@ -139,7 +125,7 @@ class ProductoController extends Controller
         unset($request["_method"]);
         unset($request["_token"]);
         $producto->update($request);
-        return redirect("cupones")->with("success" , "Se actualizó el producto con éxito");
+        return redirect("productos")->with("success" , "Se actualizó el producto con éxito");
 
     }
 }

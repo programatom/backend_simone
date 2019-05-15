@@ -8,8 +8,14 @@ class ProductosSolicitado extends Model
 {
   protected $fillable = [
     "producto_id",
-    "cantidad",
     "pedido_id",
+    "cantidad"
+  ];
+
+  // TEST DANGER
+
+  protected $attributes = [
+    "cantidad" => 0
   ];
 
 }
