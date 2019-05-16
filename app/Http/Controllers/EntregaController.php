@@ -102,13 +102,18 @@ class EntregaController extends Controller
       ]);
     }
 
-    public function get_from_date_to(Request $request){
+    public function get_entregas_from_date_to(Request $request){
 
       $fecha_inicial = $request->desde;
       $fecha_final = $request->hasta;
+      $entregas = [];
 
+      if($fecha_inicial == $fecha_final){
+        $entregas = Entrega::where('fecha_de_entrega_potencial', $fecha_final)->get();
+      }else{
+        $entregas = Entrega::whereBetween('fecha_de_entrega_potencial', [$fecha_inicial, $fecha_final])->get();
+      }
 
-      $entregas = Entrega::whereBetween('fecha_de_entrega_potencial', [$fecha_inicial, $fecha_final])->get();
 
       $ids_pedidos = [];
 
@@ -118,15 +123,15 @@ class EntregaController extends Controller
 
       $user = Auth::user();
 
-      $repartidor_habitual = $user->name;
+      $repartidor_habitual_id = $user->id;
 
       $pedidos_habituales = Pedido::where([
-        "repartidor_habitual" => $repartidor_habitual,
+        "repartidor_habitual_id" => $repartidor_habitual_id,
         "estado" => "en proceso",
         ]);
 
       $pedidos_excepcionales = Pedido::where([
-        "repartidor_excepcional" => $repartidor_habitual,
+        "repartidor_excepcional_id" => $repartidor_habitual_id,
         "estado" => "en proceso",
         ]);
 
@@ -138,7 +143,9 @@ class EntregaController extends Controller
 
       $habituales_excepcionales = array_merge($pedidos_habituales->all(), $pedidos_excepcionales->all());
 
-      $array_entregas_date_filter = $this->entrega_object($habituales_excepcionales, "todas");
+      //
+
+      $array_entregas_date_filter = $this->entrega_object($habituales_excepcionales, "todas_date_filter", $fecha_inicial, $fecha_final);
 
       return response()->json([
         "status"=>"success",
@@ -149,20 +156,20 @@ class EntregaController extends Controller
     public function get_entregas_con_alarma_y_excepcionales(){
       $user = Auth::user();
 
-      $repartidor_habitual = $user->name;
+      $repartidor_habitual_id = $user->id;
 
       $pedidos_habituales = Pedido::where([
-        "repartidor_habitual" => $repartidor_habitual,
+        "repartidor_habitual_id" => $repartidor_habitual_id,
         "estado" => "en proceso",
         "alarma" => 1,
         ])->get();
 
       $pedidos_excepcionales = Pedido::where([
-        "repartidor_excepcional" => $repartidor_habitual,
+        "repartidor_excepcional_id" => $repartidor_habitual_id,
         "estado" => "en proceso",
         ])->get();
       $habituales_excepcionales = array_merge($pedidos_habituales->all(),$pedidos_excepcionales->all());
-      $array_entregas = $this->entrega_object($habituales_excepcionales, "todas");
+      $array_entregas = $this->entrega_object($habituales_excepcionales, "todas", $fecha_incial, $fecha_final);
 
       return response()->json([
         "status"=>"success",
@@ -188,7 +195,7 @@ class EntregaController extends Controller
     }
 
 
-    public function entrega_object($pedidos_habituales, $filtro_entregas_dia){
+    public function entrega_object($pedidos_habituales, $filtro_entregas_dia, $fecha_inicial = "", $fecha_final = ""){
 
       $array_pedidos_habituales_hoy = array();
 
@@ -217,6 +224,9 @@ class EntregaController extends Controller
         $productos_entregados = [];
         $entregas_habituales_hoy = array();
 
+        // Aca me pobla el objecto con las entregas. En este punto tengo que implementar una logica de search. Puede buscar entre fecha y fecha. Sin procesar o procesadas
+
+
         if($filtro_entregas_dia == "hoy"){
           $entregas_pedido = $pedido_habitual->entregas()->get();
 
@@ -229,13 +239,23 @@ class EntregaController extends Controller
           $obj_habitual_pedido_hoy->entregas = $entregas_habituales_hoy;
 
         }else{
-          $entregas_pedido = $pedido_habitual->entregas()->get();
+          $entregas_pedido = [];
+          if($filtro_entregas_dia == "todas_date_filter" ){
+            if($fecha_inicial == $fecha_final){
+              $entregas_pedido = $pedido_habitual->entregas()->where('fecha_de_entrega_potencial', $fecha_final)->get();
+            }else{
+              $entregas_pedido = $pedido_habitual->entregas()->whereBetween('fecha_de_entrega_potencial', [$fecha_inicial, $fecha_final])->get();
+            }
+          }else{
+            $entregas_pedido = $pedido_habitual->entregas()->get();
+          }
 
           foreach ($entregas_pedido as $entrega) {
             if($entrega->estado != "sin procesar"){
               $entrega = $this->entrega_con_productos($entrega,$pedido_habitual);
             }
           }
+
           $obj_habitual_pedido_hoy->entregas = $entregas_pedido;
         }
 
@@ -245,6 +265,8 @@ class EntregaController extends Controller
       }
       return $array_pedidos_habituales_hoy;
     }
+
+
 
     public function entrega_con_productos($entrega, $pedido_habitual){
       $productos = [];
@@ -460,6 +482,8 @@ class EntregaController extends Controller
     public function procesar_entrega(Request $request){
 
       $entrega_id = $request->entrega_id;
+
+      // PATCH PARA QUE LOS EMPLEADOS PUEDAN CREAR ENTREGAS FUERA DE SCHEDULE
 
       if($entrega_id == -1){
         return $this->crear_entrega($request);

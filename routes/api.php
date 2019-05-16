@@ -53,7 +53,7 @@ Route::group(['middleware' => 'auth:api'], function() {
     Route::post('entrega', 'EntregaController@store_api'); // PROBADO
     Route::post('entregaUpdate', 'EntregaController@update');
     Route::post("procesarEntrega" , 'EntregaController@procesar_entrega');
-    Route::post("buscarEntregasFecha" , 'EntregaController@get_from_date_to');
+    Route::post("buscarEntregasFecha" , 'EntregaController@get_entregas_from_date_to');
     Route::get("entregasAlarmaYExcepcionales" , 'EntregaController@get_entregas_con_alarma_y_excepcionales');
     Route::get("entregasDanger", "EntregaController@get_entregas_danger");
 

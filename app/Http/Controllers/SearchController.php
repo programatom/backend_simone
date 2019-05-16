@@ -48,8 +48,6 @@ class SearchController extends Controller
             $entregas->where('estado', $request->input('estado'));
         }
         $request->flash();
-
-        session("entregas_search" => $entregas->paginate(100));
         
         return view("entregas.index", [
           "entregas" => $entregas->paginate(100),

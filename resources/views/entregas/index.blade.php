@@ -71,11 +71,11 @@
           </div>
           <div class="col-2">
             <label>Procesam. real</label>
-            <input class="form-control" type="text" name ="{{old('fecha_de_procesamiento_real')}}">
+            <input class="form-control" type="text" name = "fecha_de_procesamiento_real" value ="{{old('fecha_de_procesamiento_real')}}">
           </div>
           <div class="col-2">
             <label>Estado</label>
-            <input class="form-control" type="text" name ="{{old('estado')}}">
+            <input class="form-control" type="text" name = "estado" value ="{{old('estado')}}">
           </div>
           <div class="col-2 mt-3">
             <button type="submit" class="btn btn-primary btn-block mb-2">Buscar</button>
