@@ -8,12 +8,12 @@ use App\Pedido;
 use App\User;
 use App\ProductoEntrega;
 use App\SaldoCliente;
-
+use App\Helpers\DateCustomClass;
 use App\Particular;
 use App\Empresa;
 use App\ProductosSolicitado;
 
-
+use App\Rules\DateFormat;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -54,34 +54,41 @@ class EntregaController extends Controller
 
     public function index(){
         $entregas = DB::table("entregas")->join('pedidos', 'entregas.pedido_id', '=', 'pedidos.id')->select('entregas.*','pedidos.repartidor_habitual_id', "pedidos.id as pedido_id");
+        $empleados = User::where("role" , "empleado")->get();
+
         return view("entregas.index", [
         "entregas" => $entregas->orderByRaw("id DESC")->paginate(25),
-        "empleados" => User::where("role" , "empleado")->get()
+        "empleados" => $empleados
       ]);
     }
 
-    public function destroy($id)
-    {
-       $toro = Toro::findOrFail($id);
-       $nombre = $toro->nombre;
-       $toro->delete();
-       return redirect("toros")->with("success" , "Se eliminó ".$nombre." con éxito");
+    public function create () {
+      $pedidos = Pedido::all();
+
+      return view("entregas.create",
+      [
+        "pedidos" => $pedidos
+    ]
+    );
     }
 
 
-    public function get_entregas_danger(){
-      $user = Auth::user();
 
-      $repartidor_habitual = $user->name;
+    public function get_entregas_danger(){
+
+      $user = Auth::user();
+      $id = Auth::id();
+
+      $repartidor_habitual_id = $id;
 
       $pedidos_habituales = Pedido::where([
-        "repartidor_habitual" => $repartidor_habitual,
+        "repartidor_habitual_id" => $repartidor_habitual_id,
         "estado" => "en proceso",
         "danger" => 1,
         ])->get();
 
       $pedidos_excepcionales = Pedido::where([
-        "repartidor_excepcional" => $repartidor_habitual,
+        "repartidor_excepcional_id" => $repartidor_habitual_id,
         "estado" => "en proceso",
         "danger" => 1
         ])->get();
@@ -167,17 +174,13 @@ class EntregaController extends Controller
 
     public function get_entregas_habituales_empleado_hoy(){
 
-       $user = Auth::user();
-
-       $repartidor_habitual = $user->name;
+       $id = Auth::id();
 
        $pedidos_habituales = Pedido::where([
-         "repartidor_habitual" => $repartidor_habitual,
+         "repartidor_habitual_id" => $id,
          "estado" => "en proceso"
          ])->get();
-
        $array_entregas_habituales_hoy = $this->entrega_object($pedidos_habituales, "hoy");
-
        return response()->json([
          "status"=> "success",
          "data"=>$array_entregas_habituales_hoy
@@ -186,8 +189,13 @@ class EntregaController extends Controller
 
 
     public function entrega_object($pedidos_habituales, $filtro_entregas_dia){
+
       $array_pedidos_habituales_hoy = array();
-      $fecha_hoy = date("Y/m/d");
+
+      $tz = 'America/Argentina/Buenos_Aires';
+      $timestamp = time();
+      $dt = new \DateTime("now", new \DateTimeZone($tz));
+      $fecha_hoy = $dt->format('Y/m/d');
 
       foreach ($pedidos_habituales as $pedido_habitual) {
 
@@ -207,69 +215,96 @@ class EntregaController extends Controller
 
         $entrega_is_procesada = false;
         $productos_entregados = [];
+        $entregas_habituales_hoy = array();
+
         if($filtro_entregas_dia == "hoy"){
-          $entregas_habituales_hoy = array();
           $entregas_pedido = $pedido_habitual->entregas()->get();
+
           foreach ($entregas_pedido as $entrega) {
             if($entrega->fecha_de_entrega_potencial == $fecha_hoy){
+              $entrega = $this->entrega_con_productos($entrega, $pedido_habitual);
               $entregas_habituales_hoy[] = $entrega;
             }
           }
-          if(count($entregas_habituales_hoy) > 0){
-            $obj_habitual_pedido_hoy->entrega = $entregas_habituales_hoy[0];
-          }else{
-            $obj_habitual_pedido_hoy->entrega = null;
-          }
+          $obj_habitual_pedido_hoy->entregas = $entregas_habituales_hoy;
 
         }else{
           $entregas_pedido = $pedido_habitual->entregas()->get();
-          if(count($entregas_pedido) > 0){
-            $obj_habitual_pedido_hoy->entrega = $entregas_pedido[0];
-            if($entregas_pedido[0]->estado != "sin procesar"){
-              $entrega_is_procesada = true;
-              $productos_entregados = $entregas_pedido[0]->productos_entregados()->get();
+
+          foreach ($entregas_pedido as $entrega) {
+            if($entrega->estado != "sin procesar"){
+              $entrega = $this->entrega_con_productos($entrega,$pedido_habitual);
             }
-          }else{
-            $obj_habitual_pedido_hoy->entrega = null;
           }
-        }
-        $productos = [];
-
-        if($entrega_is_procesada){
-          $productos = $productos_entregados;
-        }else{
-          $productos = $pedido_habitual->productos()->get();
-          foreach($productos as $producto){
-
-            $pedido_id = $producto->pivot->pedido_id;
-            $producto_id = $producto->pivot->producto_id;
-
-            $pivotCompleto = ProductosSolicitado::where("pedido_id" , $pedido_id)
-            ->where("producto_id", $producto_id)->get();
-
-            $cantidad = $pivotCompleto[0]->cantidad;
-            $producto->cantidad = $cantidad;
-          }
+          $obj_habitual_pedido_hoy->entregas = $entregas_pedido;
         }
 
-        $obj_habitual_pedido_hoy->productos = $productos;
+
         $array_pedidos_habituales_hoy[] = $obj_habitual_pedido_hoy;
 
       }
       return $array_pedidos_habituales_hoy;
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
+    public function entrega_con_productos($entrega, $pedido_habitual){
+      $productos = [];
+      if($entrega->estado != "sin procesar"){
+        $productos = $entrega->productos_entregados()->get();
+      }else{
+        $productos = $pedido_habitual->productos()->get();
+        foreach($productos as $producto){
+
+          $pedido_id = $producto->pivot->pedido_id;
+          $producto_id = $producto->pivot->producto_id;
+
+          $pivotCompleto = ProductosSolicitado::where("pedido_id" , $pedido_id)
+          ->where("producto_id", $producto_id)->get();
+
+          $cantidad = $pivotCompleto[0]->cantidad;
+          $producto->cantidad = $cantidad;
+        }
+      }
+      $entrega->productos = $productos;
+      return $entrega;
+    }
+
     public function store(Request $request)
     {
       $messages = [
+          'required' => 'El campo :attribute es requerido',
+      ];
+
+      $validate = $this->validate($request, [
+        "pedido_id" => "required",
+        'fecha_de_entrega_potencial' => ["required" , new DateFormat],
+      ], $messages);
+
+      $tz = 'America/Argentina/Buenos_Aires';
+      $timestamp = time();
+      $dt = new \DateTime("now", new \DateTimeZone($tz));
+      $hoy = $dt->format('Y/m/d');
+
+      $request = $request->all();
+      unset($request["_token"]);
+
+      $dateTimestamp1 = strtotime($hoy);
+      $dateTimestamp2 = strtotime($request["fecha_de_entrega_potencial"]);
+      if($dateTimestamp1 > $dateTimestamp2){
+        return redirect("/entregas/create")->with(
+        [
+          "errors_custom" => "Solo se puede emitir entregas para hoy o a futuro. De otra manera nunca será vista por empleado y nunca será procesada"
+        ]);
+      }else{
+        Entrega::create($request);
+        return redirect("entregas")->with("success" , "Se creo una nueva entrega con éxito");
+      }
+
+    }
+    public function store_api(Request $request)
+    {
+      $messages = [
           'integer'    => 'Debe ingresar un dato numérico en el campo :attribute',
-          'requires'    => 'El campo :attribute es requerido'
+          'required'    => 'El campo :attribute es requerido'
       ];
       // SE PUEDE GENERAR UNA ENTREGA NUEVA E INGRESARLA EN EL SISTEMA
       // BUSCAR MANERA DE QUE SE CAMBIEN LOS PRODUCTOS ENTREGADOS
@@ -298,7 +333,7 @@ class EntregaController extends Controller
       }
       $datos_default_entrega_creada = [
         "estado" => "entregado",
-        "fecha_de_entrega_potencial" => "-1",
+        "out_of_schedule" => "1",
       ];
 
       $array_request = $request->all();
@@ -338,24 +373,6 @@ class EntregaController extends Controller
 
 
     /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id_pedido)
-    {
-      $id = Auth::id();
-      $entregasPedido = Entrega::where('user_id', $id)
-                                ->where('pedido_', $id_pedido)->get();
-
-      return response()->json([
-          'status' => 'success',
-          'data' => $entregasPedido
-      ], 200);
-    }
-
-    /**
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
@@ -368,14 +385,18 @@ class EntregaController extends Controller
      $request = request()->all();
      unset($request["_method"]);
      unset($request["_token"]);
+     $tz = 'America/Argentina/Buenos_Aires';
+     $timestamp = time();
+     $dt = new \DateTime("now", new \DateTimeZone($tz));
+     $hoy = $dt->format('Y/m/d');
      if(isset($request["estado"])){
        $entrega->update($request);
-       $entrega->fecha_de_procesamiento_real = date("Y/m/d");
+       $entrega->fecha_de_procesamiento_real = $hoy;
        $entrega->save();
      }else{
        $entrega->update($request);
      }
-     return redirect()->back();
+     return redirect("entregas")->with("success","Se actualizó la entrega con éxito");
     }
 
     public function reintentar_entrega($entrega_id){
@@ -401,12 +422,17 @@ class EntregaController extends Controller
 
       // pedido id
       // producto
+      $tz = 'America/Argentina/Buenos_Aires';
+      $timestamp = time();
+      $dt = new \DateTime("now", new \DateTimeZone($tz));
+      $hoy = $dt->format('Y/m/d');
+
       $paga_con = $request->paga_con;
       $entrega = Entrega::create([
         "user_id" => $request->user_id,
         "pedido_id" => $request->pedido_id,
-        "fecha_de_entrega_potencial" => date("Y/m/d"),
-        "fecha_de_procesamiento_real" => date("Y/m/d"),
+        "fecha_de_entrega_potencial" => $hoy,
+        "fecha_de_procesamiento_real" => $hoy,
         "estado" => "entregada",
         "observaciones" => $request->observaciones,
         "paga_con" => $paga_con,
@@ -533,10 +559,14 @@ class EntregaController extends Controller
       $monto_a_pagar = $data_request->monto_a_pagar;
       $user = $pedido_entrega->user()->get()->first();
       $this->actualizar_saldo_cliente($entrega_id, $estado, $monto_a_pagar, $paga_con, $user);
+      $tz = 'America/Argentina/Buenos_Aires';
+      $timestamp = time();
+      $dt = new \DateTime("now", new \DateTimeZone($tz));
+      $hoy = $dt->format('Y/m/d');
 
       $entrega = Entrega::where("id", $entrega_id)->update([
         "estado" => $data_request->estado,
-        "fecha_de_procesamiento_real" => date("Y/m/d"),
+        "fecha_de_procesamiento_real" => $hoy,
         "paga_con" => $paga_con,
         "derivada" => $data_request->derivada,
         "reintentar" => $data_request->reintentar,

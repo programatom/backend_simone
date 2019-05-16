@@ -22,7 +22,7 @@ class Particular extends Model
     ];
 
     protected $attributes = [
-      "user_id" => "",
+      "user_id" => 0,
       "telefono" => "",
       "calle" => "",
       "numero" => "",

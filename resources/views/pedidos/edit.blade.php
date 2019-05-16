@@ -261,7 +261,12 @@
           Entregas del pedido
           <div style="float:right">
             <strong>Hoy: </strong>
-            {{date("Y/m/d")}}
+            <?php
+                  $tz = 'America/Argentina/Buenos_Aires';
+                  $timestamp = time();
+                  $dt = new \DateTime("now", new \DateTimeZone($tz));
+                  $hoy = $dt->format('Y/m/d');
+                  echo($hoy); ?>
           </div>
         </div>
         <div class="card-body">

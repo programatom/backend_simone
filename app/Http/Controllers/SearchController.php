@@ -47,7 +47,10 @@ class SearchController extends Controller
         if ($request->estado != null) {
             $entregas->where('estado', $request->input('estado'));
         }
+        $request->flash();
 
+        session("entregas_search" => $entregas->paginate(100));
+        
         return view("entregas.index", [
           "entregas" => $entregas->paginate(100),
           "empleados" => User::where("role" , "empleado")->get()

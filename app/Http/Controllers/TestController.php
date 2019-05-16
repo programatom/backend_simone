@@ -13,7 +13,10 @@ class TestController extends Controller
 
   public function simulate ()
   {
-    $hoy = date("Y/m/d");
+    $tz = 'America/Argentina/Buenos_Aires';
+    $timestamp = time();
+    $dt = new \DateTime("now", new \DateTimeZone($tz));
+    $hoy = $dt->format('Y/m/d');
     $collect_test_data = array();
     for ($i = 1; $i <= 50; $i++) {
         $cron = new cronEmisionEntregaController();

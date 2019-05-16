@@ -53,7 +53,10 @@ class cronEmisionEntregaController extends Controller
     public function iniciar_proceso_cron($hoy = null){
 
       if ($hoy == null){
-        $hoy = date("Y/m/d");
+        $tz = 'America/Argentina/Buenos_Aires';
+        $timestamp = time();
+        $dt = new \DateTime("now", new \DateTimeZone($tz));
+        $hoy = $dt->format('Y/m/d');
       }
 
       $pedidos = Pedido::all();
@@ -78,7 +81,7 @@ class cronEmisionEntregaController extends Controller
         return "no data";
       }
 
-      $ultima_entrega = $pedido->entregas()->get()->last();
+      $ultima_entrega = $pedido->entregas()->where("out_of_schedule", 0)->get()->last();
 
       // Nunca se emitió una entrega? Si o si se emite una si el pedido está en proceso
 
@@ -359,12 +362,6 @@ class cronEmisionEntregaController extends Controller
       {
         /*
 
-        $day = $request->dia;
-        $fecha_piso = $request->last_potential_date;
-
-        $day = 1;
-        $fecha_piso = date("Y/m/d");
-        $next_or_previous = "previous";
         */
         if($next_or_previous == "next"){
           $modifier = "+";

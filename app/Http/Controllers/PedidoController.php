@@ -220,6 +220,13 @@ class PedidoController extends Controller
       }else{
         $pedido->date_change_alert = 0;
       }
+      if($request["estado"] == "discontinuado"){
+        $pedido->danger = -1;
+        $pedido->alarma = -1;
+      }else{
+        $pedido->danger = 0;
+        $pedido->alarma = 0;
+      }
       $pedido->save();
 
       request()->validate([

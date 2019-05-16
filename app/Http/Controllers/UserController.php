@@ -86,7 +86,7 @@ class UserController extends Controller
       $role_data = "";
       if(in_array($role, $roles_to_show)){
         $has_role = true;
-        $role_data = DB::table($role.'s')->where("user_id",$id)->get()->first();
+        $role_data = DB::table($role.'s')->where("user_id", $id)->get()->first();
       }
 
       $role_obj = new \stdClass();
