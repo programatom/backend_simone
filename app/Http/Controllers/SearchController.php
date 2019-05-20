@@ -28,9 +28,7 @@ class SearchController extends Controller
 
   public function entregas_search(Request $request){
 
-        if($request->filtro == null){
-          return redirect("entregas");
-        }
+
         $entregas = DB::table("entregas")->join('pedidos', 'entregas.pedido_id', '=', 'pedidos.id')->select("entregas.*", "pedidos.repartidor_habitual_id", "pedidos.repartidor_excepcional_id");
 
         if ($request->repartidor_habitual_id != "null") {
