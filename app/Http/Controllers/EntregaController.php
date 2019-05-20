@@ -203,10 +203,7 @@ class EntregaController extends Controller
 
       $array_pedidos_habituales_hoy = array();
 
-      $tz = 'America/Argentina/Buenos_Aires';
-      $timestamp = time();
-      $dt = new \DateTime("now", new \DateTimeZone($tz));
-      $fecha_hoy = $dt->format('Y/m/d');
+      $fecha_hoy = $this->hoy();
 
       foreach ($pedidos_habituales as $pedido_habitual) {
 
@@ -410,10 +407,9 @@ class EntregaController extends Controller
      $request = request()->all();
      unset($request["_method"]);
      unset($request["_token"]);
-     $tz = 'America/Argentina/Buenos_Aires';
-     $timestamp = time();
-     $dt = new \DateTime("now", new \DateTimeZone($tz));
-     $hoy = $dt->format('Y/m/d');
+
+     $hoy = $this->hoy();
+
      if(isset($request["estado"])){
        $entrega->update($request);
        $entrega->fecha_de_procesamiento_real = $hoy;
@@ -443,14 +439,24 @@ class EntregaController extends Controller
       ], 200);
     }
 
+    public function hoy(){
+      $tz = 'America/Argentina/Buenos_Aires';
+      $timestamp = time();
+      $dt = new \DateTime("now", new \DateTimeZone($tz));
+
+      //return $dt->format('Y/m/d');
+      //TEST
+      $hoy = date('Y/m/d');
+      $new_hoy = date('Y/m/d', strtotime($hoy.' + 14 day'));
+      return $new_hoy;
+    }
+
     public function crear_entrega($request){
 
       // pedido id
       // producto
-      $tz = 'America/Argentina/Buenos_Aires';
-      $timestamp = time();
-      $dt = new \DateTime("now", new \DateTimeZone($tz));
-      $hoy = $dt->format('Y/m/d');
+      $hoy = $this->hoy();
+
 
       $data = (object) $request->data;
       $entrega = Entrega::create([
@@ -583,10 +589,8 @@ class EntregaController extends Controller
       $monto_a_pagar = $data_request->monto_a_pagar;
       $user = $pedido_entrega->user()->get()->first();
       $this->actualizar_saldo_cliente($entrega_id, $estado, $monto_a_pagar, $paga_con, $user);
-      $tz = 'America/Argentina/Buenos_Aires';
-      $timestamp = time();
-      $dt = new \DateTime("now", new \DateTimeZone($tz));
-      $hoy = $dt->format('Y/m/d');
+
+      $hoy = $this->hoy();
 
       $entrega = Entrega::where("id", $entrega_id)->update([
         "estado" => $data_request->estado,

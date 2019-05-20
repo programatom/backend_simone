@@ -24,8 +24,6 @@
             <button type="submit" class="btn btn-success btn-block">Agregar producto</button>
           </form>
 
-          @foreach($pedido->productos as $producto)
-          <option value="{{$producto->id}}">{{$producto->nombre}}</option>
           <table class="table">
             <thead>
               <tr>
@@ -54,7 +52,6 @@
               </tr>
               @endforeach
             </tbody>
-            @endforeach
           </table>
 
         </div>

@@ -8,7 +8,7 @@
             @csrf
             <div class="row justify-content-center">
               <div class="col-8">
-                <input class="form-control" type="text" name ="filtro" placeholder="Filtro" aria-label="Search">
+                <input class="form-control" type="text" name ="filtro" placeholder="Filtro" aria-label="Search" value="{{old('filtro')}}">
               </div>
               <div class="col-2 mb-3">
                 <button type="submit" class="btn btn-primary">Buscar</button>

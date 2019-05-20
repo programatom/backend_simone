@@ -20,6 +20,7 @@ class SearchController extends Controller
                             ->orWhere('role',"like",$request->filtro)
                             ->orWhere('id',"=",$request->filtro)
                             ->paginate(50);
+                            $request->flash();
 
         return view("usuarios.index",[
           "usuarios" => $users
@@ -71,6 +72,8 @@ class SearchController extends Controller
                           ->orWhere('descuento',"like",$request->filtro)
                           ->orWhere('user_id',"=",$request->filtro)
                           ->paginate(50);
+                          $request->flash();
+
 
       return view("pedidos.index",[
         "pedidos" => $pedidos
@@ -94,6 +97,8 @@ class SearchController extends Controller
                         ->orWhere('fecha_de_entrega',"like" ,$request->filtro)
 
                         ->paginate(50);
+                        $request->flash();
+
     if(isset($request->usuario_exception_id)){
       $user_controller = new UserController();
       $user_data = $user_controller->get_user_data($request->usuario_exception_id);

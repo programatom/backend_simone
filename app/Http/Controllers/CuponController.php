@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Validator;
 use App\Rules\DateFormat;
+use App\Rules\Descuento;
 
 class CuponController extends Controller
 {
@@ -47,9 +48,8 @@ class CuponController extends Controller
       request()->validate([
         "codigo" => $validation_array,
         "fecha_expiracion" => ['required', new DateFormat],
-        "porcentaje_descuento" => ['required'],
+        "porcentaje_descuento" => ['required', new Descuento],
         "duracion_descuento" => ['required'],
-
       ],[
         "required" => "El campo :attribute es requerido",
         "unique" => "El campo :attribute debe ser único"
@@ -78,12 +78,11 @@ class CuponController extends Controller
             "unique"=> "El campo :attribute debe ser único, ya hay un cupon de descuento con este código!"
         ];
 
-        // NOTA VALIDAR FORMATO DE FECHA Y RANGO DEL DESCUENTO Y AGREGAR GENERADOR AUTOMATICO DE CODIGO
 
         $this->validate($request, [
           "codigo" => ["required", "unique:cupons"],
           "fecha_expiracion" => ["required", new DateFormat],
-          "porcentaje_descuento" => "required|integer",
+          "porcentaje_descuento" => ["required|integer", new Descuento],
           "duracion_descuento" => "required|integer"
 
        ], $messages);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Pedido;
 use App\Entrega;
+use App\Http\Controllers\EntregaController;
 use DateTime;
 use DateInterval;
 
@@ -32,7 +33,6 @@ class cronEmisionEntregaController extends Controller
       }
 
       $entrega_nueva = Entrega::create([
-        "user_id" => $usuario_del_pedido->id,
         "pedido_id" => $pedido->id,
         "fecha_de_entrega_potencial" => $nueva_fecha_potencial
       ]);
@@ -53,10 +53,8 @@ class cronEmisionEntregaController extends Controller
     public function iniciar_proceso_cron($hoy = null){
 
       if ($hoy == null){
-        $tz = 'America/Argentina/Buenos_Aires';
-        $timestamp = time();
-        $dt = new \DateTime("now", new \DateTimeZone($tz));
-        $hoy = $dt->format('Y/m/d');
+        $entrega_controller = new EntregaController();
+        $hoy = $entrega_controller->hoy();
       }
 
       $pedidos = Pedido::all();
@@ -133,7 +131,8 @@ class cronEmisionEntregaController extends Controller
             if($pedido->fecha_de_restauracion == null){
               $entregas_a_adelantar = $ultima_entrega->entregas_adelantadas;
               $periodicidad_number = $obj_periodicidad->$periodicidad_pedido;
-              $dias_adelantados = $periodicidad_number * $entregas_a_adelantar;
+              // Se agrega el + 1 en ésta ecuación así se restaura el pedido justo un dia después de que se debería emitir.
+              $dias_adelantados = $periodicidad_number * $entregas_a_adelantar + 1;
               if($pedido->danger == 1){
                 $previous_date_with_correct_day = $this->get_next_or_previous_date_with_this_day($pedido->dia_de_entrega, $hoy , "previous");
                 $fecha_de_restauracion = date('Y/m/d', strtotime($previous_date_with_correct_day. ' + '.$dias_adelantados.' days'));
@@ -148,7 +147,6 @@ class cronEmisionEntregaController extends Controller
               }
             }else if($pedido->fecha_de_restauracion == $hoy){
               $pedido->fecha_de_restauracion = "";
-              $pedido->adelanta = 0;
               $pedido->save();
               return $this->emitir_entrega_partiendo_de_hoy($periodicidad_pedido, $hoy, $dia_de_entrega, $pedido, $usuario_del_pedido);
             }else{

@@ -8,6 +8,7 @@ use App\ElementoConImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\FileBrowserController;
+use App\Rules\Precio;
 
 class ProductoController extends Controller
 {
@@ -53,7 +54,7 @@ class ProductoController extends Controller
 
       $validate = $this->validate($request, [
         'nombre' => 'required',
-        'precio' => 'required|integer',
+        'precio' => ['required', "integer", new Precio],
         'descripcion' => 'required',
         "posicion" =>"required|unique:productos|integer"
       ], $messages);
@@ -116,7 +117,7 @@ class ProductoController extends Controller
       ];
         request()->validate([
           'nombre' => 'required',
-          'precio' => 'required|integer',
+          'precio' => ['required', "integer" ,  new Precio],
           'descripcion' => 'required',
           'posicion' => $validation_array_posicion
         ] , $messages);

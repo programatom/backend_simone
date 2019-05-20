@@ -116,7 +116,7 @@
                   </div>
 
                   <div class="form-group">
-                    <label>Fecha de expiración</label>
+                    <label>Fecha de expiración del descuento</label>
                     <input type="text" name="expiracion_descuento" class="form-control" value="{{ old('expiracion_descuento') }}"></input>
                   </div>
                 </div>
