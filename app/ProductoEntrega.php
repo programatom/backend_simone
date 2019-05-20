@@ -12,7 +12,8 @@ class ProductoEntrega extends Model
       "producto_id",
       "precio",
       "nombre",
-      
+      "fecha_de_entrega"
+
     ];
 
     public function entrega()

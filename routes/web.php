@@ -1,15 +1,4 @@
 <?php
-
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| contains the "web" middleware group. Now create something great!
-|
-*/
 Route::post("upload_photo", "FileUploadController@upload_photo")->middleware('auth');
 
 Route::get('/', function () {
@@ -36,7 +25,16 @@ Route::resource("empresas" ,"EmpresaController")->middleware('auth');
 Route::resource("entregas" ,"EntregaController")->middleware('auth');
 Route::post("producto_pedido", "PedidoController@producto_pedido")->middleware('auth');
 Route::post("producto_pedido_delete", "PedidoController@producto_pedido_delete")->middleware('auth');
+
 Route::post("user_search", "SearchController@user_search")->middleware("auth");
 Route::post("entregas_search", "SearchController@entregas_search")->middleware("auth");
+Route::post("pedidos_search", "SearchController@pedidos_search")->middleware("auth");
+Route::post("productos_entregados_search", "SearchController@productos_entregados_search")->middleware("auth");
 
+Route::get("productos_entregados", function () {
+
+  return view("other.productos_entregados", [
+    "productos" => DB::table('producto_entregas')->orderBy('created_at', 'desc')->paginate(50)
+  ]);
+});
 Route::resource("pedidos" ,"PedidoController")->middleware('auth');

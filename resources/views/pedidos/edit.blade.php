@@ -303,6 +303,9 @@
               @endforeach
             </tbody>
           </table>
+          <div class="row justify-content-center">
+            {{$pedido->entregas->links()}}
+          </div>
         </div>
       </div>
     </div>

@@ -50,6 +50,9 @@
                       <a class="dropdown-item" href="/pedidos">
                           Pedidos
                       </a>
+                      <a class="dropdown-item" href="/productos_entregados">
+                          Productos entregados
+                      </a>
                       @endguest
                     </ul>
 

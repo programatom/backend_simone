@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 
 use Validator;
@@ -29,7 +30,8 @@ class PedidoController extends Controller
     public function index()
     {
       return view("pedidos.index",[
-        "pedidos" => Pedido::all()
+        "pedidos" => Pedido::orderBy('created_at', 'desc')->paginate(50)
+
       ]);
     }
 
@@ -78,7 +80,7 @@ class PedidoController extends Controller
       $user = Auth::user();
 
       $pedidos = Pedido::where([
-        "repartidor_habitual" => $user->name
+        "repartidor_habitual_id" => $user->id
         ])->get();
 
       foreach ($pedidos as $pedido){
@@ -90,6 +92,35 @@ class PedidoController extends Controller
         'status' => 'success',
         'data' => $pedidos
       ], 200);
+    }
+
+    public function show_admin ($id){
+      $pedido = Pedido::find($id);
+      $obj_respuesta = new \stdClass();
+      $obj_respuesta->pedido = $pedido;
+      $productos = $pedido->productos()->get();
+      foreach($productos as $producto){
+
+        $producto_id = $producto->pivot->producto_id;
+
+        $pivotCompleto = ProductosSolicitado::where("pedido_id" , $id)
+        ->where("producto_id", $producto_id)->get();
+
+        $cantidad = $pivotCompleto[0]->cantidad;
+        $producto->cantidad = $cantidad;
+      }
+      $obj_respuesta->pedido->productos = $productos;
+      $obj_respuesta->entregas = $pedido->entregas()->get();
+      $user_id = $pedido->user_id;
+      $user = User::find($user_id);
+      $role = $user->role;
+      $rol = DB::table($role.'s')->where("user_id", $user_id)->get()->first();
+      $obj_respuesta->usuario = $user;
+      $obj_respuesta->rol = $rol;
+      return response()->json([
+        "status" => "success",
+        "data" => $obj_respuesta
+      ]);
     }
 
     /**
@@ -151,7 +182,7 @@ class PedidoController extends Controller
     public function edit($id){
       $pedido = Pedido::findOrFail($id);
 
-      $entregas = $pedido->entregas()->orderByRaw('id DESC')->get();
+      $entregas = $pedido->entregas()->orderByRaw('id DESC')->paginate(25);
       $usuario = $pedido->user()->get();
       $productos = $pedido->productos()->get();
       foreach($productos as $producto){
@@ -207,6 +238,7 @@ class PedidoController extends Controller
       }
       return redirect(url()->previous());
     }
+
     public function update($id){
 
       $messages = [
@@ -237,7 +269,7 @@ class PedidoController extends Controller
       unset($request["_token"]);
       $pedido->update($request);
       return redirect("pedidos")->with("success" , "Se actualizó el pedido con éxito");
-
     }
+
 
 }

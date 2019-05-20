@@ -19,6 +19,7 @@ class CreateProductoEntregasTable extends Migration
             $table->integer('entrega_id');
             $table->string('precio');
             $table->string('nombre');
+            $table->string('fecha_de_entrega');
             $table->integer('producto_id');
             $table->timestamps();
         });

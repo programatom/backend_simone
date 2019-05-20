@@ -8,6 +8,7 @@ use App\Empleado;
 use App\Particular;
 use App\Empresa;
 use Validator;
+use App\ProductoEntrega;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -23,7 +24,7 @@ class UserController extends Controller
     {
       $user = Auth::user();
       return view("usuarios.index", [
-        "usuarios" => User::all()
+        "usuarios" => User::orderBy('created_at', 'desc')->paginate(50)
       ]);
     }
 
@@ -79,7 +80,25 @@ class UserController extends Controller
     }
 
     public function edit($id){
+
+      $user_data = $this->get_user_data($id);
+
+
+      return view("usuarios.edit",[
+        "usuario" => $user_data->usuario,
+        "role_obj" => $user_data->role_obj,
+        "particular" => $user_data->role_data,
+        "empresa" => $user_data->role_data,
+        "productos" => $user_data->productos_entregados
+      ]);
+    }
+
+    public function get_user_data($id){
+      $user_data = new \stdClass();
       $usuario = User::findOrFail($id);
+
+      $user_data->usuario = $usuario;
+
       $role = $usuario->role;
       $roles_to_show = array("particular" , "empresa");
       $has_role = false;
@@ -88,17 +107,27 @@ class UserController extends Controller
         $has_role = true;
         $role_data = DB::table($role.'s')->where("user_id", $id)->get()->first();
       }
+      $user_data->role_data = $role_data;
+
+      $pedidos_del_usuario = $usuario->pedidos()->get();
+      $productos_entregados = [];
+
+      foreach($pedidos_del_usuario as $pedido){
+        $entregas = $pedido->entregas()->get();
+        foreach($entregas as $entrega){
+          $productos_solicitados = $entrega->productos_entregados()->get();
+          foreach($productos_solicitados as $producto_solicitado){
+            $productos_entregados[] = $producto_solicitado;
+          }
+        }
+       }
 
       $role_obj = new \stdClass();
       $role_obj->has_role = $has_role;
       $role_obj->role = $role;
-
-      return view("usuarios.edit",[
-        "usuario" => $usuario,
-        "role_obj" => $role_obj,
-        "particular" => $role_data,
-        "empresa" => $role_data
-      ]);
+      $user_data->productos_entregados = $productos_entregados;
+      $user_data->role_obj = $role_obj;
+      return $user_data;
     }
 
     public function showAdmin($id)

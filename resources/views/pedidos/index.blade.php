@@ -29,12 +29,32 @@
         </a>
       </div>
     </div>
-    <div class="row justify-content-center">
+
+    <form action="/pedidos_search" method="POST">
+      @csrf
+      <div class="row justify-content-center mb-2">
+        <div class="col-8">
+          <input class="form-control" type="text" name ="filtro" placeholder="Filtro" aria-label="Search">
+        </div>
+        <div class="col-2">
+          <button type="submit" class="btn btn-primary">Buscar</button>
+        </div>
+      </div>
+    </form>
+
+    <div class="card">
+      <div class="card-header">
+        Todas los pedidos
+      </div>
+      <div class="card-body">
+        <div class="row justify-content-center">
       <table class="table">
         <thead>
           <tr>
             <th scope="col">#</th>
             <th scope="col">Usuario</th>
+            <th scope="col">User ID</th>
+
             <th scope="col">Periodicidad</th>
             <th scope="col">Repartidor habitual</th>
             <th scope="col">Repartidor excepcional</th>
@@ -50,7 +70,8 @@
           @foreach ($pedidos as $pedido)
           <tr>
             <th scope="row">{{$pedido->id}}</th>
-            <td>{{$pedido->user()->get()[0]->email}}</td>
+            <td>{{User::find($pedido->user_id)->email}}</td>
+            <td>{{$pedido->user_id}}</td>
             <td>{{$pedido->periodicidad}}</td>
             <td>{{User::find($pedido->repartidor_habitual_id)->name}}</td>
             <td>{{User::find($pedido->repartidor_excepcional_id)->name}}</td>
@@ -76,6 +97,13 @@
           </tr>
           @endforeach
         </tbody>
+      </table>
+      </div>
+      <div class="row justify-content-center mb-3">
+        {{$pedidos->links()}}
+      </div>
+
+      </div>
     </div>
 </div>
 @endsection

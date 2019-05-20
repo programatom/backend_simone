@@ -57,7 +57,7 @@ class EntregaController extends Controller
         $empleados = User::where("role" , "empleado")->get();
 
         return view("entregas.index", [
-        "entregas" => $entregas->orderByRaw("id DESC")->paginate(25),
+        "entregas" => $entregas->orderByRaw("id DESC")->paginate(50),
         "empleados" => $empleados
       ]);
     }
@@ -168,13 +168,17 @@ class EntregaController extends Controller
         "repartidor_excepcional_id" => $repartidor_habitual_id,
         "estado" => "en proceso",
         ])->get();
-      $habituales_excepcionales = array_merge($pedidos_habituales->all(),$pedidos_excepcionales->all());
-      $array_entregas = $this->entrega_object($habituales_excepcionales, "todas", $fecha_incial, $fecha_final);
+
+      $processed_excepcionales = $this->entrega_object($pedidos_excepcionales, "todas");
+      $processed_habituales_alarma = $this->entrega_object($pedidos_habituales, "todas");
+      $respuesta_obj = new \stdClass();
+      $respuesta_obj->excepcionales = $processed_excepcionales;
+      $respuesta_obj->habituales_alarma = $processed_habituales_alarma;
 
       return response()->json([
         "status"=>"success",
-        "data"=> $array_entregas,
-        "nombre_empleado" =>$user->name
+        "data"=> $respuesta_obj,
+        "id_empleado" =>$user->id
       ]);
 
     }
@@ -251,9 +255,7 @@ class EntregaController extends Controller
           }
 
           foreach ($entregas_pedido as $entrega) {
-            if($entrega->estado != "sin procesar"){
-              $entrega = $this->entrega_con_productos($entrega,$pedido_habitual);
-            }
+            $entrega = $this->entrega_con_productos($entrega,$pedido_habitual);
           }
 
           $obj_habitual_pedido_hoy->entregas = $entregas_pedido;
@@ -311,6 +313,7 @@ class EntregaController extends Controller
 
       $dateTimestamp1 = strtotime($hoy);
       $dateTimestamp2 = strtotime($request["fecha_de_entrega_potencial"]);
+
       if($dateTimestamp1 > $dateTimestamp2){
         return redirect("/entregas/create")->with(
         [
@@ -449,25 +452,21 @@ class EntregaController extends Controller
       $dt = new \DateTime("now", new \DateTimeZone($tz));
       $hoy = $dt->format('Y/m/d');
 
-      $paga_con = $request->paga_con;
+      $data = (object) $request->data;
       $entrega = Entrega::create([
-        "user_id" => $request->user_id,
         "pedido_id" => $request->pedido_id,
         "fecha_de_entrega_potencial" => $hoy,
         "fecha_de_procesamiento_real" => $hoy,
         "estado" => "entregada",
-        "observaciones" => $request->observaciones,
-        "paga_con" => $paga_con,
+        "observaciones" => $data->observaciones,
+        "paga_con" => $data->paga_con,
         "out_of_schedule" => 1
       ]);
 
       $entrega_id = $entrega->id;
-      $productos_entregados = $request->productos_entregados;
-      $monto_a_pagar = $request->monto_a_pagar;
-      $user = User::where("id", $user_id)->get()->first();
-
-      $this->guardar_entrega_de_producto($entrega_id, $productos_entregados);
-      $this->actualizar_saldo_cliente($entrega_id, "entregada", $monto_a_pagar, $paga_con, $user);
+      $user = Pedido::find($request->pedido_id)->user()->get()->first();
+      $this->guardar_entrega_de_producto($entrega_id, $data->productos_entregados);
+      $this->actualizar_saldo_cliente($entrega_id, "entregada", $data->monto_a_pagar, $data->paga_con, $user);
 
       return response()->json([
         "status" => "success",
@@ -481,13 +480,13 @@ class EntregaController extends Controller
 
     public function procesar_entrega(Request $request){
 
-      $entrega_id = $request->entrega_id;
-
       // PATCH PARA QUE LOS EMPLEADOS PUEDAN CREAR ENTREGAS FUERA DE SCHEDULE
-
-      if($entrega_id == -1){
+      if(!isset($request->entrega_id)){
         return $this->crear_entrega($request);
       }
+
+      $entrega_id = $request->entrega_id;
+
 
       $data_request = (object) $request->data;
 
@@ -567,7 +566,8 @@ class EntregaController extends Controller
           "entrega_id" => $entrega_id,
           "producto_id" => $producto_id,
           "precio" => $precio,
-          "nombre" => $nombre
+          "nombre" => $nombre,
+          "fecha_de_entrega" => date("Y/m/d")
         ]);
       }
 

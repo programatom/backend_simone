@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
-
+use App\User;
 // ELIMINAR TIPO DE PEDIDO DE LA TABLA DE PEDIDOS
 
 //
@@ -34,10 +34,19 @@ Route::group(['middleware' => 'auth:api'], function() {
         return $request->user();
     });
 
+    Route::get('empleados', function(){
+
+      return response()->json([
+        "status" => "success",
+        "data" => User::where("role","empleado")->get()
+      ]);
+    });
+
+
     // 3- Pedidos
 
     Route::get('pedidosShow', 'PedidoController@show');
-    Route::get('pedidoShowAdmin/{id}', 'PedidoController@showAdmin');
+    Route::get('pedidoShowAdmin/{id}', 'PedidoController@show_admin');
     Route::post('pedidoStoreAdmin', 'PedidoController@storeAdmin'); // LISTO
     Route::post('pedidoUpdate', 'PedidoController@updateAdmin'); // LISTO
     Route::get('pedidosEmpleado', 'PedidoController@get_where_empleado'); // LISTO
