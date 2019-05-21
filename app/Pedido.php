@@ -24,7 +24,6 @@ class Pedido extends Model
       "faltan_datos",
       "alarma",
       "danger",
-      "dias_sin_procesar_danger",
       "expiracion_descuento",
       "fecha_de_restauracion",
       "date_change_alert"
@@ -42,7 +41,6 @@ class Pedido extends Model
       "faltan_datos" => 1,
       "alarma" => 0,
       "danger" => 0,
-      "dias_sin_procesar_danger" => 0,
       "expiracion_descuento" => 0,
       "fecha_de_restauracion" => "",
       "date_change_alert" => 0

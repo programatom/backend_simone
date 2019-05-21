@@ -9,6 +9,37 @@ use App\Http\Controllers\EntregaController;
 use DateTime;
 use DateInterval;
 
+// El script es un emisor de entregas pausable. Lo que hace es evaluar para cada entrega de cada pedido su posición cronologica cuando se ejecuta el script. Si la entrega está dentro del periodo en el que se debe entregar, o se pasó y hubo una entrega nueva que no se emite porque si chocaría con la entrega anterior que nunca se procesó entonces se está en estado de danger, porque hay una entrega que no se sabe que pasó. Una vez que sé que hay una entrega emitida para el pedido, tengo que evaluar antes que nada su fecha potencial y la fecha de hoy. Si entre ellas hay mas de un periodo, entonces podría estar en estado de danger, si no entonces quiere decir que solo es un estado de alarma y si la fecha es igual a hoy entonces todavia esa entrega no debería modificarse.
+
+// Luego se procede a checkear en que fecha se procesó por primera vez o no.
+// No hay ultima entrega ->
+  // Se emite partiendo de hoy.
+
+// Si la ultima entrega emitida ->
+
+    // está procesada ("cancelada" o "entregada") ->  dentro del rango de alarma y estoy dentro de ese mismo rango y no es una entrega que adelante, entonces emito la proxima entrega en un "periodo + hoy". Si estoy fuera de ese rango y no es una entrega que adelante otras entregas, entonces la emito desde hoy hacia el próximo dia de entrega. En ambos casos, el pedido esta en el estado de "en proceso".
+        // la ultima entrega adelanta entregas ->
+              // tiene fecha de restauración?
+                  // SI
+                  // ya se calculó una fecha de restauración. Estoy en el
+                    // pasado -> no se emite ninguna entrega.
+                    // futuro o hoy -> emito una entrega para ese pedido a partir de hoy.
+                  // NO
+                  // Estoy dentro del rango de alarma o de danger de la entrega?
+                    // alarma -> proxima fecha es ultima fecha ideal + periodo * Nº entregas adelantadas + 1
+                    // danger -> calculo la misma fecha de recuperacion que antes, ultima fecha ideal + periodo * Nº entregas adelantadas + 1, si
+                        //HOY ES MAS GRANDE
+                          // Emito una entrega en el prox dia de entrega partiendo de hoy
+                        // HOY ES MAS CHICO o IGUAL A HOY
+                          // no se emite ninguna entrega.
+
+
+
+// Está "sin procesar" -> y estoy dentro de ese mismo rango, el pedido está en el estado de alarma. O estoy afuera del rango el pedido esta en estado de danger. No se emite ninguna entrega.
+
+//
+
+
 
 class cronEmisionEntregaController extends Controller
 {
@@ -80,48 +111,53 @@ class cronEmisionEntregaController extends Controller
       }
 
       $ultima_entrega = $pedido->entregas()->where("out_of_schedule", 0)->get()->last();
-
-      // Nunca se emitió una entrega? Si o si se emite una si el pedido está en proceso
-
       $usuario_del_pedido = $pedido->user()->get()->first();
       $periodicidad_pedido = $pedido->periodicidad;
       $dia_de_entrega = $pedido->dia_de_entrega;
 
 
-      // Si el pedido esta discountinuado entonces se debería realizar alguna lógica para su relanzamiento
+      // Si el pedido esta discountinuado no se evalua su estado o el sistema está en pausa no se ejecuta al emisor.
 
       if($pedido->estado == "en proceso"){
 
         // Si nunca se emitió una entrega y el pedido está en proceso entonces se emite una entrega
 
-        if($ultima_entrega == null ||
-           $pedido->danger < 0){
+        if($ultima_entrega == null){
 
           $this->emitir_entrega_partiendo_de_hoy($periodicidad_pedido, $hoy,
         $dia_de_entrega, $pedido, $usuario_del_pedido);
 
-          return "se reestablece un cancelado, emite un inicial o un pedido adelantado";
+          return "Primer entrega";
 
         }
+
+        // Hay una ultima entrega a analizar. En que estado está?
 
         $fecha_de_procesamiento_real = $ultima_entrega->fecha_de_procesamiento_real;
         $last_potential_date = $ultima_entrega->fecha_de_entrega_potencial;
 
-        // Se entrego?
+        // Se procesó?
 
         if($ultima_entrega->estado == "entregada" || $ultima_entrega->estado == "cancelada" ){
 
-          // Se realizó la entrega emitida. Se emite la siguiente que va a ser en el dia igual al dia de entrega que esté despues de la suma entre la fecha de creacion y los dias a añadir por periodicidad en el caso de que no haya dias de alarma. Antes checkeo si se entregó dentro del rango previsto o si estuvo algunos días sin procesarse el pedido
+          // Logica si la entrega adelanta otras entregas y bloquea la emision
 
-          // En este paso debería checkear el filtro counter y ver si se adelanto o no entregas. Si adelanto, el usuario va a especificar cuantas entregas quiere que se adelanten. Como el estado es entregado, la logica viene a este punto todos las iteraciones a intentar de emitir la próxima entrega. Opciones:
+          if($ultima_entrega->adelanta == 1 && $ultima_entrega->estado != "cancelada"){
 
-          // 1 - Multiplicar el Nº de entregas a filtrar por la periodicidad y descontar de ese valor hasta que de cero. Pero si se entrega en un dia distinto al potencial
-          // POSIBLE ECUACIÓN: Nº EntregasAFiltrar * Periodicidad - TiempoPasadoDesdeLaUltimaFechaPotencial
-          // 2 - Fijar una fecha a partir de la cual se debe seguir emitiendo entregas. El usuario especifica cuantas entregas adelanta el pedido.
-          // En un pedido semanal por ejemplo, si se adelantan 3 entregas, la ecuacion sería, próxima fecha = $last_potential_date + peridiocidad_int * entregas adelantadas + 1. Osea el dia siguiente de la entrega potencial se vuelve a empezar a emitir entregas. Ese dia se emite una entrega partiendo del dia de hoy.
-          // Si el pedido estaba en danger, entonces debería checkear si estoy en el mismo dia de entrega del pedido, si lo estoy entonces emito desde ese dia, sino busco la fecha anterior con el mismo dia y busco una próxima fecha desde ese dia.
-
-          if($ultima_entrega->adelanta == 1){
+            // la ultima entrega adelanta entregas ->
+                  // tiene fecha de restauración?
+                      // SI
+                      // ya se calculó una fecha de restauración. Estoy en el
+                        // pasado -> no se emite ninguna entrega.
+                        // futuro o hoy -> emito una entrega para ese pedido a partir de hoy.
+                      // NO
+                      // Estoy dentro del rango de alarma o de danger de la entrega?
+                        // alarma -> proxima fecha es ultima fecha ideal + periodo * Nº entregas adelantadas + 1
+                        // danger -> calculo la misma fecha de recuperacion que antes, ultima fecha ideal + periodo * Nº entregas adelantadas + 1, si
+                            //HOY ES MAS GRANDE O IGUAL
+                              // Emito una entrega en el prox dia de entrega partiendo de hoy
+                            // HOY ES MAS CHICO
+                              // no se emite ninguna entrega.
 
             $obj_periodicidad = new \stdClass();
             $obj_periodicidad->semanal = 7;
@@ -129,83 +165,85 @@ class cronEmisionEntregaController extends Controller
             $obj_periodicidad->mensual = 28;
 
             if($pedido->fecha_de_restauracion == null){
+
               $entregas_a_adelantar = $ultima_entrega->entregas_adelantadas;
               $periodicidad_number = $obj_periodicidad->$periodicidad_pedido;
               // Se agrega el + 1 en ésta ecuación así se restaura el pedido justo un dia después de que se debería emitir.
               $dias_adelantados = $periodicidad_number * $entregas_a_adelantar + 1;
-              if($pedido->danger == 1){
-                $previous_date_with_correct_day = $this->get_next_or_previous_date_with_this_day($pedido->dia_de_entrega, $hoy , "previous");
-                $fecha_de_restauracion = date('Y/m/d', strtotime($previous_date_with_correct_day. ' + '.$dias_adelantados.' days'));
+              $fecha_de_restauracion = date('Y/m/d', strtotime($last_potential_date.' + '.$dias_adelantados.' days'));
+
+              if($this->rango_actual($hoy, $last_potential_date, $periodicidad_pedido) == "rango_alarma"){
+
+
                 $pedido->fecha_de_restauracion = $fecha_de_restauracion;
                 $pedido->save();
-                return "adelantada";
+                return $this->en_proceso_state($pedido);
+
               }else{
-                $fecha_de_restauracion = date('Y/m/d', strtotime($last_potential_date. ' + '.$dias_adelantados.' days'));
-                $pedido->fecha_de_restauracion = $fecha_de_restauracion;
-                $pedido->save();
-                return "adelantada";
+
+                $hoy_timestamp = strtotime($hoy);
+                $fecha_de_restauracion_timestamp = strtotime($fecha_de_restauracion);
+
+                if($hoy_timestamp >= $fecha_de_restauracion_timestamp){
+                  return $this->emitir_entrega_partiendo_de_hoy($periodicidad_pedido, $hoy, $dia_de_entrega, $pedido, $usuario_del_pedido);
+                }else{
+                  $pedido->fecha_de_restauracion = $fecha_de_restauracion;
+                  $pedido->save();
+                  return $this->en_proceso_state($pedido);
+                }
               }
-            }else if($pedido->fecha_de_restauracion == $hoy){
-              $pedido->fecha_de_restauracion = "";
-              $pedido->save();
-              return $this->emitir_entrega_partiendo_de_hoy($periodicidad_pedido, $hoy, $dia_de_entrega, $pedido, $usuario_del_pedido);
+
             }else{
-              return $this->en_proceso_state($pedido);
+              $restauracion_timestamp = strtotime($pedido->fecha_de_restauracion);
+              $hoy_timestamp = strtotime($hoy);
+
+              if( $restauracion_timestamp > $hoy_timestamp){
+                return $this->en_proceso_state($pedido);
+              }else{
+                $pedido->fecha_de_restauracion = "";
+                $pedido->save();
+                return $this->emitir_entrega_partiendo_de_hoy($periodicidad_pedido, $hoy, $dia_de_entrega, $pedido, $usuario_del_pedido);
+              }
             }
           }
 
-          if($pedido->danger == 0){
+          // Logica si la entrega no adelanta
+          /*
+          dentro del rango de alarma y estoy dentro de ese mismo rango y no es una entrega que adelante, entonces emito la proxima entrega en un "periodo + hoy". Si estoy fuera de ese rango y no es una entrega que adelante otras entregas, entonces la emito desde hoy hacia el próximo dia de entrega. En ambos casos, el pedido esta en el estado de "en proceso".
+          */
 
-            // Acá emito una entrga basandome en la ultima entrega potencial e incrementando su valor por la periodicidad. No hubo danger
-            if($pedido->date_change_alert == 1){
-              $pedido->date_change_alert = 0;
-              $pedido->save();
-              return $this->emitir_entrega_partiendo_de_hoy($periodicidad_pedido, $last_potential_date, $dia_de_entrega, $pedido, $usuario_del_pedido);
-            }else{
-              return $this->emitir_entrega_pedido_a_tiempo($periodicidad_pedido, $last_potential_date, $pedido, $usuario_del_pedido);
-            }
+
+
+          if($this->rango_actual($hoy, $last_potential_date, $periodicidad_pedido) == "rango_alarma"){
+
+            // Acá emito una entrega basandome en la ultima entrega potencial e incrementando su valor por la periodicidad. No hubo danger
+
+            return $this->emitir_entrega_pedido_a_tiempo($periodicidad_pedido, $last_potential_date, $pedido, $usuario_del_pedido);
 
 
           }else{
 
-            // Calculo la nueva fecha potencial en base a la fecha de entrega real no a la potencial. Porque se pasó de dias.
+            // Como estoy dentro del rango danger, emito una entrega para el próximo dia que sea dia de entrega a partir de hoy.
 
-            return $this->emitir_entrega_pedido_a_destiempo($periodicidad_pedido, $fecha_de_procesamiento_real, $pedido, $usuario_del_pedido);
-
+            return $this->emitir_entrega_partiendo_de_hoy($periodicidad_pedido, $hoy, $dia_de_entrega, $pedido, $usuario_del_pedido);
           }
         }
 
         // NO SE ENTREGÓ
+
         // Antes de hacer nada tengo que checkear que hoy sea mas grande que la fecha potencial de la entrega si es hoy es mas grande entonces no se entrego cuando se debería, pero podemos estar en el mismo periodo
 
-        $dateTimestamp1 = strtotime($hoy);
-        $dateTimestamp2 = strtotime($last_potential_date);
+        $hoy_timestamp = strtotime($hoy);
+        $last_potential_date_timestamp = strtotime($last_potential_date);
 
-        if( $dateTimestamp1 >  $dateTimestamp2){
+        if( $hoy_timestamp > $last_potential_date_timestamp){
 
-          // Si para hoy no se procesó entonces se levanta el estado de alarma
-          // Ahora checkeo si estoy dentro del periodo en el que se podría entregar ésta entrega. Envío como fecha piso la entrega potencial. No mando dia de entrega. En el caso de mensual, semanal y quincenal, debería enviar sin dia de entrega. Suma y listo, sé si estoy dentro del periodo. En cambio en los diarios, podría levantar danger state de una si no se entrego el pedido de hoy.
+          // Si hoy es mas grande que la fecha potencial checkeo el rango actual
 
-          $nueva_fecha_potencial = "";
-          switch($periodicidad_pedido){
-            case "diario":
+          if($this->rango_actual($hoy, $last_potential_date, $periodicidad_pedido) == "rango_danger"){
             return $this->danger_state($pedido);
-            default:
-            $nueva_fecha_potencial = $this->get_new_potencial_date($periodicidad_pedido, $ultima_entrega->fecha_de_entrega_potencial);
-          }
-
-          $dateTimestamp1 = strtotime($hoy);
-          $dateTimestamp2 = strtotime($nueva_fecha_potencial);
-
-          if($nueva_fecha_potencial > $hoy){
-
-            // Estamos en el mismo dia o mas de cuando se debería entregar, pero en el mismo periodo franco
-
+          } else{
             return $this->alarm_state($pedido);
-          }else{
-
-            // No hay fecha de entrega, y además estamos fuera de periodo. DANGER
-            return $this->danger_state($pedido);
           }
         }else{
           return $this->en_proceso_state($pedido);
@@ -213,27 +251,32 @@ class cronEmisionEntregaController extends Controller
       }else if($pedido->estado == "discontinuado"){
         return $this->cancelado_state($pedido);
       }
-
-
-
       }
 
-      public function emitir_entrega_pedido_a_destiempo($periodicidad_pedido, $fecha_de_procesamiento_real, $pedido, $usuario_del_pedido){
-        $nueva_fecha_potencial = $this->get_new_potencial_date($periodicidad_pedido, $fecha_de_procesamiento_real, $pedido->dia_de_entrega);
+      public function rango_actual($hoy, $ultima_fecha_potencial, $periodicidad){
 
-        return $this->emitir_entrega($pedido, $usuario_del_pedido, $nueva_fecha_potencial);
+        $obj_periodicidad = new \stdClass();
+        $obj_periodicidad->semanal = 7;
+        $obj_periodicidad->quincenal = 14;
+        $obj_periodicidad->mensual = 28;
 
-      }
+        $add_days = $obj_periodicidad->$periodicidad;
 
+        $limite_alarma = date('Y/m/d', strtotime($ultima_fecha_potencial.' + '.$add_days.' day'));
 
+        $hoy_timestamp = strtotime($hoy);
+        $limite_alarma_timestamp = strtotime($limite_alarma);
 
-      public function emitir_entrega_pedido_a_tiempo($periodicidad_pedido, $last_potential_date, $pedido, $usuario_del_pedido){
+        if( $hoy_timestamp > $limite_alarma_timestamp ){
+          return "rango_danger";
+        } else if ( $hoy_timestamp <  $limite_alarma_timestamp){
+          return "rango_alarma";
+        } else if ( $hoy_timestamp == $limite_alarma_timestamp){
 
-        $nueva_fecha_potencial = $this->get_new_potencial_date($periodicidad_pedido, $last_potential_date);
+          // Acá no importa el estado, en ambos casos la próxima fecha de entrega es hoy
 
-        return $this->emitir_entrega($pedido, $usuario_del_pedido, $nueva_fecha_potencial);
-
-
+          return "rango_alarma";
+        }
       }
 
       public function pedido_with_no_data($pedido){
@@ -251,7 +294,6 @@ class cronEmisionEntregaController extends Controller
       }
 
       public function en_proceso_state($pedido){
-        $pedido->dias_sin_procesar_danger = 0;
         $pedido->alarma = 0;
         $pedido->danger = 0;
         $pedido->save();
@@ -273,11 +315,25 @@ class cronEmisionEntregaController extends Controller
       }
 
       public function danger_state($pedido){
-        $pedido->dias_sin_procesar_danger = $pedido->dias_sin_procesar_danger + 1;
         $pedido->alarma = 0;
         $pedido->danger = 1;
         $pedido->save();
         return "DANGER state";
+      }
+
+      public function emitir_entrega_pedido_a_tiempo($periodicidad_pedido, $last_potential_date, $pedido, $usuario_del_pedido){
+
+        $new_date_patch = "";
+
+        if($pedido->date_change_alert == 1){
+          $pedido->date_change_alert = 0;
+          $pedido->save();
+          $new_date_patch = $pedido->dia_de_entrega;
+        }
+
+        $nueva_fecha_potencial = $this->get_new_potencial_date($periodicidad_pedido, $last_potential_date, "", $new_date_patch);
+
+        return $this->emitir_entrega($pedido, $usuario_del_pedido, $nueva_fecha_potencial);
       }
 
       public function emitir_entrega_partiendo_de_hoy($periodicidad_pedido, $hoy,
@@ -285,76 +341,71 @@ class cronEmisionEntregaController extends Controller
         $nueva_fecha_potencial = $this->get_new_potencial_date($periodicidad_pedido, $hoy, $dia_de_entrega);
 
         return $this->emitir_entrega($pedido, $usuario_del_pedido, $nueva_fecha_potencial);
-
       }
 
-      public function get_new_potencial_date($periodicidad_pedido, $fecha_piso, $dia_de_entrega = ""){
+
+      public function get_new_potencial_date($periodicidad_pedido, $fecha_piso, $dia_de_entrega = "", $date_change_calibrate = ""){
         // $last_potential_date formateada siempre en 'Y/m/d'
         // Si no paso un dia de entrega, queire decir que se tiene que emitir sumando el periodo
+        $obj_periodicidad = new \stdClass();
+        $obj_periodicidad->semanal = 7;
+        $obj_periodicidad->quincenal = 14;
+        $obj_periodicidad->mensual = 28;
 
-        switch($periodicidad_pedido){
-          case "semanal":
-          if($dia_de_entrega == ""){
-            // Fecha piso es la ultima entrega potencial
-
-            return date('Y/m/d', strtotime($fecha_piso. ' + 7 days'));
+        if($dia_de_entrega == ""){
+          // Fecha piso es la ultima entrega potencial
+          if($date_change_calibrate != ""){
+            $fecha_ancla = date('Y/m/d', strtotime($fecha_piso. ' + '.$obj_periodicidad->$periodicidad.' days'));
+            return $this->get_closest_date_with_this_day($date_change_calibrate , $fecha_ancla);
           }else{
-
-            // El proximo dia que coincida con el dia de entrega despues de la fecha piso sale la emision
-
-            // Si paso dia de entrega entonces es una entrega que o es la primera vez que se emite, viene de discontinuación o viene de ser cancelado a estar en proceso nuevamente. Siempre se envia la fecha piso, que en el caso que esté pasada de dias es la fecha de entrega real. Si es la primera vez es el dia de hoy. Si viene de estar disontinuado es el dia de hoy.
-
-            return $this->get_next_or_previous_date_with_this_day($dia_de_entrega, $fecha_piso);
+            return date('Y/m/d', strtotime($fecha_piso. ' + '.$obj_periodicidad->$periodicidad_pedido.' days'));
           }
-          case "quincenal":
-          if($dia_de_entrega == ""){
-            return date('Y/m/d', strtotime($fecha_piso. ' + 14 days'));
-          }else{
-            return $this->get_next_or_previous_date_with_this_day($dia_de_entrega, $fecha_piso);
-          }
-          case "mensual":
-          if($dia_de_entrega == ""){
-            return date('Y/m/d', strtotime($fecha_piso. ' + 28 days'));
-            //return $this->get_new_date_plus_one_month($fecha_piso);
-          }else{
-            return $this->get_next_or_previous_date_with_this_day($dia_de_entrega, $fecha_piso);
-          }
-          /*
-          default:
+        }else{
 
-          // Acá debería emitise en el proxima dia, teniendo en cuenta el dia actual si hoy es ese dia, entonces evaluo
-          // sumo dias al dia de hoy hasta que el format de la fecha resultante sea igual al numero de dia que necesito
-          $dia_de_entrega = explode(",", $dia_de_entrega );
-          $last_potential_date_obj = new \DateTime($fecha_piso);
-          $siguiente_N_dia_de_entrega = "0";
-          $index_dia_de_entrega_hoy = 0;
+          // El proximo dia que coincida con el dia de entrega despues de la fecha piso sale la emision
 
-          foreach($dia_de_entrega as $key => $dia_de_entrega){
-            if($dia_de_entrega == $fecha_piso_obj->format("N")){
-              // Tengo que ver en que punto de la semana estoy, si hoy es dia de entrega el siguiente dia de entrega es hoy
-              $siguiente_N_dia_de_entrega = $dia_de_entrega;
-              $index_dia_de_entrega_hoy = $key;
-            }
-          }
+          // Si paso dia de entrega entonces es una entrega que o es la primera vez que se emite, viene de discontinuación o viene de ser cancelado a estar en proceso nuevamente. Siempre se envia la fecha piso, que en el caso que esté pasada de dias es la fecha de entrega real. Si es la primera vez es el dia de hoy. Si viene de estar disontinuado es el dia de hoy.
 
-          if($siguiente_N_dia_de_entrega != "0"){
-            return $this->get_next_or_previous_date_with_this_day($siguiente_N_dia_de_entrega , $fecha_piso);
-          }
+          return $this->get_next_or_previous_date_with_this_day($dia_de_entrega, $fecha_piso);
+        }
+      }
 
-          // Si no, entonces estoy en un dia de la semana donde no hay entrega
-          // la proxima entrega potencial seria el proximo elemento del array, o ver si estoy en el ultimo index del array
+      public function get_closest_date_with_this_day($day , $fecha_ancla){
 
-          $index_siguiente_dia = $index_dia_de_entrega_hoy + 1;
-          if($index_siguiente_dia > count($dia_de_entrega) - 1){
-            $siguiente_N_dia_de_entrega = $dia_de_entrega[0];
-          }else{
-            $siguiente_N_dia_de_entrega = $dia_de_entrega[$index_siguiente_dia];
-          }
-          return $this->get_next_or_previous_date_with_this_day($siguiente_N_dia_de_entrega , $fecha_piso);
-          */
+        $new_emission_date = "";
+
+        $format_N_date_check = 0;
+        $date_counter_future = 0;
+        $future_date = "";
+
+        while( $day != $format_N_date_check_future){
+          $future_date = date('Y/m/d', strtotime($fecha_ancla.' + '.$date_counter_future.' day'));
+          $date_counter_future = $date_counter_future + 1;
+          $date_time = new \DateTime($new_emission_date);
+          $format_N_date_check = $date_time->format("N");
         }
 
+        $format_N_date_check = 0;
+        $date_counter_past = 0;
+        $past_date = "";
+
+        while( $day != $format_N_date_check){
+          $past_date = date('Y/m/d', strtotime($fecha_ancla.' + '.$date_counter_past.' day'));
+          $date_counter_past = $date_counter_past + 1;
+          $date_time = new \DateTime($new_emission_date);
+          $format_N_date_check = $date_time->format("N");
+        }
+        // Si esta mas lejos la fecha futura que la pasada, se elije las mas cercana, la pasada.
+
+        if($date_counter_future > $date_counter_past){
+          $new_emission_date = $past_date;
+        }else{
+          $new_emission_date = $future_date;
+        }
+
+        return $new_emission_date;
       }
+
       // $day , $last_potential_date = ""
       public function get_next_or_previous_date_with_this_day($day , $fecha_piso , $next_or_previous = "next")
       {
@@ -367,10 +418,7 @@ class cronEmisionEntregaController extends Controller
           $modifier = "-";
         }
 
-
-
         $format_N_date_check = 0;
-        $protector_de_loop_infinito = 0;
         $new_emission_date = "";
         $date_counter = 0;
 

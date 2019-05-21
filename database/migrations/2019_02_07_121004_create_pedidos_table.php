@@ -26,7 +26,6 @@ class CreatePedidosTable extends Migration
           $table->string("forma_de_pago");
           $table->string("expiracion_descuento");
 
-          $table->integer("dias_sin_procesar_danger");
           $table->string("fecha_de_restauracion");
           $table->integer("faltan_datos");
           $table->integer("alarma");

@@ -410,6 +410,8 @@ class EntregaController extends Controller
 
      $hoy = $this->hoy();
 
+     // Se puede cancelar entregas sin procesar desde el panel.
+
      if(isset($request["estado"])){
        $entrega->update($request);
        $entrega->fecha_de_procesamiento_real = $hoy;
@@ -430,24 +432,24 @@ class EntregaController extends Controller
       ], 200);
     }
 
-    public function derivar_entrega($entrega_id,$data_request,$pedido_entrega){
-      $entrega = $this->procesar_entrega_database_save($entrega_id, $data_request, 0, $pedido_entrega);
-
-      return response()->json([
-        'status' => 'success',
-        'data' => $entrega
-      ], 200);
-    }
 
     public function hoy(){
+
+      // PROD
+
+      /*
       $tz = 'America/Argentina/Buenos_Aires';
       $timestamp = time();
       $dt = new \DateTime("now", new \DateTimeZone($tz));
+      return $dt->format('Y/m/d');
+      */
 
-      //return $dt->format('Y/m/d');
-      //TEST
+
+      // TEST
+      /*
+      */
       $hoy = date('Y/m/d');
-      $new_hoy = date('Y/m/d', strtotime($hoy.' + 14 day'));
+      $new_hoy = date('Y/m/d', strtotime($hoy.' + 130 day'));
       return $new_hoy;
     }
 
@@ -493,9 +495,21 @@ class EntregaController extends Controller
 
       $entrega_id = $request->entrega_id;
 
-
+      $entrega = Entrega::find($entrega_id);
+      $pedido_id = $entrega->pedido_id;
+      $ultima_entrega_id = Entrega::where("pedido_id", $pedido_id)->get()->last()->id;
       $data_request = (object) $request->data;
 
+      // PATCH PARA EVITAR ENTREGAS ADELANTADAS EN ENTRGAS QUE NO SE VAN A VISUALIZAR EN LA LOGICA DE LA TAREA CRON
+
+      if($data_request->adelanta == 1){
+        if($entrega_id != $ultima_entrega_id){
+          return response()->json([
+            "status" => "fail",
+            "message" => "Debe modificar la entrega Nº: ".$ultima_entrega_id." para adelantar entregas futuras de este pedido."
+          ]);
+        }
+      }
       $is_derivada = $data_request->derivada;
       $reintentar = $data_request->reintentar;
 
@@ -511,48 +525,35 @@ class EntregaController extends Controller
         return $this->reintentar_entrega($entrega_id);
       }
 
-      // HACER VALIDACION, NO SE PUEDEN DERIVAR ENTREGAS PROCESADAS !
-      // NO SE PUEDEN MODIFICAR ENTREGAS DERIVADAS !
-      if($is_derivada == 1){
-        return $this->derivar_entrega($entrega_id,$data_request,$pedido_entrega);
-      }
+
+
+      $productos_entregados = $data_request->productos_entregados;
+
+      // Se envía array vacío en una entrega cancelada porque no entrega ningún producto.
+
+      $this->guardar_entrega_de_producto($entrega_id, $productos_entregados);
 
       $estado_entrega = $data_request->estado;
-
-
-      if($estado_entrega == "cancelada"){
-        $productos_entregados = $data_request->productos_entregados;
-        $this->guardar_entrega_de_producto($entrega_id, $productos_entregados);
-
-        $entrega = $this->procesar_entrega_database_save($entrega_id, $data_request, 0 , $pedido_entrega);
-
-        return response()->json([
-          'status' => 'success',
-          'data' => $entrega
-        ], 200);
-      }
-
-      $paga_con = $data_request->paga_con;
-      $user = Entrega::where("id" , $entrega_id)->get()->first()->user()->get()->first();
+      $paga_con = 0;
 
       if($estado_entrega == "entregada"){
-        $productos_entregados = $data_request->productos_entregados;
-        $this->guardar_entrega_de_producto($entrega_id, $productos_entregados);
-
-        $entrega = $this->procesar_entrega_database_save($entrega_id, $data_request, $paga_con , $pedido_entrega);
-
-        return response()->json([
-          'status' => 'success',
-          'data' => $entrega
-        ], 200);
+        $paga_con = $data_request->paga_con;
       }
 
+      $entrega = $this->procesar_entrega_database_save($entrega_id, $data_request, $paga_con , $pedido_entrega);
+
+      return response()->json([
+        'status' => 'success',
+        'data' => $entrega
+      ], 200);
     }
 
     public function guardar_entrega_de_producto($entrega_id, $productos_entregados){
-      // 1 - Una entrega puede tener solo una entrada en la tabla de productos entregados. Los productos se guardan en distintas filas de la tabla, pero si se encuentra un campo con el id de la entrega, se borra todo y se agregan los nuevos campos.
+
+      // 1 - Una entrega puede tener solo una entrada en la tabla de productos entregados. Los productos se guardan en distintos casos de la tabla, pero si se encuentra un campo con el id de la entrega, se borra todo y se agregan los nuevos campos.
 
       // NOTA: Lo demás son datos de actualizacion sobreescribibles.
+
       $productos_entregados = $productos_entregados;
       $query_productos = ProductoEntrega::where("entrega_id" , $entrega_id);
       $productos_registrados = $query_productos->get();
@@ -590,7 +591,11 @@ class EntregaController extends Controller
       $user = $pedido_entrega->user()->get()->first();
       $this->actualizar_saldo_cliente($entrega_id, $estado, $monto_a_pagar, $paga_con, $user);
 
+
+      Entrega::find($entrega_id);
+
       $hoy = $this->hoy();
+
 
       $entrega = Entrega::where("id", $entrega_id)->update([
         "estado" => $data_request->estado,
@@ -603,13 +608,17 @@ class EntregaController extends Controller
         "observaciones" => $data_request->observaciones
       ]);
 
+      $entrega = Entrega::find($entrega_id);
+
       return $entrega;
     }
 
-    public function actualizar_saldo_cliente($entrega_id, $estado,$monto_a_pagar, $paga_con, $user){
+
+
+    public function actualizar_saldo_cliente($entrega_id, $estado_entrega,$monto_a_pagar, $paga_con, $user){
+
       // 1 - SIEMPRE QUE SE PROCESA UNA ENTREGA SE BORRAN TODOS LOS CAMPOS DE SALDO. SOLAMEMNTE CUANDO ESTÁ ENTREGADA PUEDE HABER CAMBIOS EN EL SALDO DE UN CLIENTE.
 
-      $estado_entrega = $estado;
       SaldoCliente::where("entrega_id" , $entrega_id)->delete();
 
       if($estado_entrega != "entregada"){

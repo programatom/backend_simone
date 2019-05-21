@@ -84,7 +84,7 @@
           </div>
         </form>
       </div>
-      <div class="col-12">
+      <div class="col-12" style = "padding:0">
         <div class="card">
           <div class="card-header">
             Todas las entregas

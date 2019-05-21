@@ -12,7 +12,6 @@ Route::get('/home', function () {
 Route::get('/simulate', "TestController@simulate");
 Route::get('/check_day', "TestController@check_proper_day");
 Route::get('/check_pedidos', "TestController@recover_certain_pedidos_with_entregas");
-Route::get('/check_day', "cronEmisionEntregaController@get_next_or_previous_date_with_this_day");
 Route::get("cron", "cronEmisionEntregaController@iniciar_proceso_cron");
 
 Auth::routes();

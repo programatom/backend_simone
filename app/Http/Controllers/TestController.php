@@ -82,17 +82,28 @@ class TestController extends Controller
     $entregas = Entrega::all();
     $test_data = array();
     foreach ($entregas as $entrega) {
-      $fecha_de_entrega_potencial = $entrega->fecha_de_entrega_potencial;
-      $date_time = new DateTime($fecha_de_entrega_potencial);
-      $dia_entrega = $date_time->format("N");
       $pedido = $entrega->pedido()->get()->first();
       $dia_pedido = $pedido->dia_de_entrega;
+      $fecha_de_entrega_potencial = $entrega->fecha_de_entrega_potencial;
+
+      $date_time = new DateTime($fecha_de_entrega_potencial);
+      $dia_entrega = $pedido->dia_de_entrega;
+
+      $obj = new \stdClass();
+      $obj->fecha_de_entrega_potencial = $date_time->format("Y/m/d");
+      $obj->dia_entrega = $dia_entrega;
+      $test_data[] = $obj;
+
+
+
+      $obj = new \stdClass();
+      $obj->dia_pedido = $dia_pedido;
+      $obj->dia_entrega = $dia_entrega;
 
       if($dia_pedido != $dia_entrega){
         $obj = new \stdClass();
         $obj->pedido_id = $pedido->id;
         $obj->entrega_id = $entrega->id;
-        $test_data[] = $obj;
       }
     }
 

@@ -94,13 +94,6 @@
                 </small>
               </div>
             </div>
-            <div class="col-6">
-              <div class="form-group">
-                <label>Dias en danger</label>
-                <input type="number" readonly name="danger" class="form-control" value="{{ $pedido->dias_sin_procesar_danger }}"></input>
-
-              </div>
-            </div>
           </div>
         </div>
       </div>
