@@ -1,5 +1,12 @@
 <?php
 
+$root = "";
+if(env("AMB", null) == "TEST"){
+  $root = storage_path('app/public');
+}else{
+  $root = "/home/aguasdes/public_html/media";
+}
+
 return [
 
     /*
@@ -50,7 +57,8 @@ return [
 
         'public' => [
             'driver' => 'local',
-            'root' => storage_path('app/public'),
+
+            'root' => $root,
             'url' => env('APP_URL').'/storage',
             'visibility' => 'public',
         ],

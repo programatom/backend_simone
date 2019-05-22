@@ -97,15 +97,29 @@ class FileUploadController extends Controller
   }
 
   public function upload_photo(Request $request){
-    $path = $request->path;
-    $path = storage_path('app/public/'.$path);
-    $this->directory_logic($path);
+    if(env("AMB", "PROD")){
+      $path = $request->path;
+      $path_public_media = Storage::disk('public')->getAdapter()->getPathPrefix();
 
-    if(isset($request->clean_dir)){
-      $this->eliminateAllFilesInDirectory($path);
+      $path = $path_public_media.$path;
+      $this->directory_logic($path);
+      if(isset($request->clean_dir)){
+        $this->eliminateAllFilesInDirectory($path);
+      }
+
+      return $this->store($path, $request, $request->session, $request->session_msg);
+    }else{
+
+      $path = $request->path;
+      $path = storage_path('app/public/'.$path);
+      $this->directory_logic($path);
+
+      if(isset($request->clean_dir)){
+        $this->eliminateAllFilesInDirectory($path);
+      }
+
+      return $this->store($path, $request, $request->session, $request->session_msg);
     }
-
-    return $this->store($path, $request, $request->session, $request->session_msg);
 
   }
 

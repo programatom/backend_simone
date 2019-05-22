@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\FileBrowserController;
 use App\Rules\Precio;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 class ProductoController extends Controller
 {
@@ -78,8 +80,14 @@ class ProductoController extends Controller
       );
       $response_obj = $file_browser->browse($path, $sub_dir_array);
       // Debería poner una opcion de editar
-      if(count($response_obj->imagen_principal)){
-        $response_obj->imagen_principal[0] = env("APP_URL")."/storage/".$response_obj->imagen_principal[0];
+
+      if(count($response_obj->imagen_principal) > 0){
+        if(env("AMB", null) == "PROD"){
+          $path_to_image = $response_obj->imagen_principal[0];
+          $response_obj->imagen_principal[0] = URL::to('/')."/media/".$path_to_image;
+        }else{
+          $response_obj->imagen_principal[0] = env("APP_URL")."/storage/".$response_obj->imagen_principal[0];
+        }
       }
       return view("productos.edit", [
         "producto" => $producto,
