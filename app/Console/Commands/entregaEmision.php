@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use App\Http\Controllers\cronEmisionEntregaController;
+
 
 class entregaEmision extends Command
 {
@@ -11,14 +13,14 @@ class entregaEmision extends Command
      *
      * @var string
      */
-    protected $signature = 'command:name';
+    protected $signature = 'command:entregaEmision';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Tarea diaria para emitir entregas';
 
     /**
      * Create a new command instance.
@@ -37,6 +39,7 @@ class entregaEmision extends Command
      */
     public function handle()
     {
-        //
+      $emision_controller = new cronEmisionEntregaController();
+      $emision_controller->iniciar_proceso_cron();
     }
 }

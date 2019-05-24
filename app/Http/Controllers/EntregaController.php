@@ -438,19 +438,19 @@ class EntregaController extends Controller
       // PROD
 
       /*
+      */
       $tz = 'America/Argentina/Buenos_Aires';
       $timestamp = time();
       $dt = new \DateTime("now", new \DateTimeZone($tz));
       return $dt->format('Y/m/d');
-      */
 
 
       // TEST
       /*
-      */
       $hoy = date('Y/m/d');
       $new_hoy = date('Y/m/d', strtotime($hoy.' + 130 day'));
       return $new_hoy;
+      */
     }
 
     public function crear_entrega($request){
