@@ -55,8 +55,8 @@ class User extends Authenticatable
     protected $fillable = [
         'name', 'email', 'password', 'role', "saldo"
     ];
-
-    /**
+    
+        /**
      * The attributes that should be hidden for arrays.
      *
      * @var array
@@ -76,6 +76,7 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        "saldo" => "integer"
     ];
 
     public function generateToken()

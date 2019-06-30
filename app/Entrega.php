@@ -24,6 +24,17 @@ class Entrega extends Model
        return $this->hasMany('App\ProductoEntrega');
      }
 
+     protected $casts = [ 
+      'user_id' => 'integer', 
+      'pedido_id' => 'integer',
+      'derivada' => "integer",
+      "adelanta" => "integer",
+      "reintentar" => "integer",
+      "out_of_schedule" => "integer",
+      "paga_con" => "integer",
+      "entregas_adelantadas" => "integer"
+      ];
+
      protected $fillable = [
        "user_id",
        "pedido_id",

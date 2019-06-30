@@ -29,6 +29,21 @@ class Pedido extends Model
       "date_change_alert"
 
     ];
+    
+
+    protected $casts = [ 
+      'alarma' => 'integer', 
+      'danger' => 'integer',
+      'date_change_alert' => "integer",
+      "descuento" => "integer",
+      "dia_de_entrega" => "integer",
+      "faltan_datos" => "integer",
+      "repartidor_habitual_id" => "integer",
+      "repartidor_excepcional_id" => "integer",
+      "user_id" => "integer",
+      "visto" => "integer"
+    ];
+
 
     protected $attributes = [
       "forma_de_pago" => "",

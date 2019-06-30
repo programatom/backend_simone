@@ -500,16 +500,18 @@ class EntregaController extends Controller
       $ultima_entrega_id = Entrega::where("pedido_id", $pedido_id)->get()->last()->id;
       $data_request = (object) $request->data;
 
-      // PATCH PARA EVITAR ENTREGAS ADELANTADAS EN ENTRGAS QUE NO SE VAN A VISUALIZAR EN LA LOGICA DE LA TAREA CRON
-
-      if($data_request->adelanta == 1){
-        if($entrega_id != $ultima_entrega_id){
-          return response()->json([
-            "status" => "fail",
-            "message" => "Debe modificar la entrega Nº: ".$ultima_entrega_id." para adelantar entregas futuras de este pedido."
-          ]);
+      // PATCH PARA EVITAR ENTREGAS ADELANTADAS EN ENTREGAS QUE NO SE VAN A VISUALIZAR EN LA LOGICA DE LA TAREA CRON
+      if(!empty($data_request->adelanta)){
+        if($data_request->adelanta == 1){
+          if($entrega_id != $ultima_entrega_id){
+            return response()->json([
+              "status" => "fail",
+              "message" => "Debe modificar la entrega Nº: ".$ultima_entrega_id." para adelantar entregas futuras de este pedido."
+            ]);
+          }
         }
       }
+      
       $is_derivada = $data_request->derivada;
       $reintentar = $data_request->reintentar;
 

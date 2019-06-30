@@ -87,7 +87,7 @@ class UserController extends Controller
       return view("usuarios.edit",[
         "usuario" => $user_data->usuario,
         "role_obj" => $user_data->role_obj,
-        "particular" => $user_data->role_data,
+        "particular" => (object) $user_data->role_data,
         "empresa" => $user_data->role_data,
         "productos" => $user_data->productos_entregados
       ]);

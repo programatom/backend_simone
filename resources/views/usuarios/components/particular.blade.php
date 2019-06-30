@@ -1,3 +1,4 @@
+
 <div class="card">
   <div class="card-body">
     <form action="/particulares/{{ $particular->id }}" method="POST">

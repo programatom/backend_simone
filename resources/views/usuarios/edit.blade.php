@@ -57,7 +57,7 @@
               "empresa" => $empresa
             ])
             @endcomponent
-          @endif
+      @endif
       </div>
       <div class="col-12 mb-2 mt-3" style="padding:0">
         <form action="/productos_entregados_search" method="POST">
